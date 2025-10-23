@@ -1,0 +1,498 @@
+[
+  {
+    "id": "2703a97f-574c-4322-807d-d8ce10b5c824",
+    "sku": "NPP-BASIC-001",
+    "name": "NitePutter Basic LED Light",
+    "slug": "niteputter-basic-led-light",
+    "category": "basic",
+    "status": "active",
+    "short_description": "Essential LED lighting for night putting practice with easy clip-on design",
+    "description": "<h3>Perfect Your Putting Day or Night</h3>\n<p>The NitePutter Basic LED Light transforms your putter into a precision training tool that works 24/7.\nEngineered with professional-grade components and backed by veteran craftsmanship, this essential\nlighting system lets you practice your putting stroke anytime, anywhere.</p>\n\n<h4>Key Features:</h4>\n<ul>\n    <li>500 lumen high-intensity LED for optimal ball and line visibility</li>\n    <li>Universal clip design fits 99% of putters on the market</li>\n    <li>8-10 hour battery life on a single charge</li>\n    <li>USB-C fast charging - fully charged in 2 hours</li>\n    <li>Weather-resistant IPX6 rating for outdoor use</li>\n    <li>Lightweight aircraft-grade aluminum construction (45g)</li>\n</ul>\n\n<h4>Why Choose NitePutter Basic?</h4>\n<p>Whether you're an early morning golfer or prefer evening practice sessions, the NitePutter Basic\nensures you never miss a practice opportunity. The precision-engineered light angle illuminates both\nyour ball and target line without creating shadows or glare.</p>",
+    "features": [
+      "500 lumen LED brightness",
+      "8-10 hour battery life",
+      "USB-C fast charging (2 hours)",
+      "Universal putter compatibility",
+      "IPX6 weather resistance",
+      "45g lightweight design",
+      "Aircraft-grade aluminum body",
+      "One-touch on/off operation"
+    ],
+    "whats_included": [
+      "NitePutter Basic LED Light",
+      "USB-C Charging Cable (3ft)",
+      "Universal Mounting Clip",
+      "Quick Start Guide",
+      "Warranty Registration Card"
+    ],
+    "price": 149.99,
+    "compare_at_price": 179.99,
+    "cost_per_unit": 52,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "NitePutter Basic LED Light mounted on putter",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": "https://youtube.com/watch?v=niteputter-basic-demo",
+    "instruction_manual_url": "/manuals/niteputter-basic-manual.pdf",
+    "specifications": {
+      "weight": "45g",
+      "material": "Aircraft-grade aluminum",
+      "warranty": "2 year limited warranty",
+      "battery_life": "8-10 hours continuous use",
+      "charging_time": "2 hours full charge",
+      "led_brightness": "500 lumens",
+      "water_resistance": "IPX6 rated"
+    },
+    "shipping": {
+      "width": 4,
+      "height": 2,
+      "length": 6,
+      "weight": 0.5,
+      "ships_separately": false
+    },
+    "inventory": {
+      "quantity": 250,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 20
+    },
+    "seo": {
+      "keywords": [
+        "golf light",
+        "putting light",
+        "night golf",
+        "LED putter light",
+        "golf training aid"
+      ],
+      "url_slug": "niteputter-basic-led-light",
+      "meta_title": "NitePutter Basic LED Light | Night Golf Putting Practice",
+      "meta_description": "Transform your putting practice with the NitePutter Basic LED Light. 500 lumens, 8-10 hour battery, universal fit. Perfect for day or night practice."
+    },
+    "average_rating": 4.7,
+    "review_count": 142,
+    "created_at": "2025-10-21T23:54:45.130256+00:00",
+    "updated_at": "2025-10-21T23:54:45.130256+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  },
+  {
+    "id": "5c8ec112-f147-4ff8-90be-d1c48718c277",
+    "sku": "NPP-PRO-001",
+    "name": "NitePutter Pro LED System",
+    "slug": "niteputter-pro-led-system",
+    "category": "pro",
+    "status": "active",
+    "short_description": "Professional-grade LED system with adjustable brightness and advanced features",
+    "description": "<h3>The Choice of Serious Golfers</h3>\n<p>The NitePutter Pro LED System represents the pinnacle of golf lighting technology. Designed in\ncollaboration with PGA professionals and tested by thousands of golfers, this advanced system delivers\nunmatched performance for serious practice sessions.</p>\n\n<h4>Advanced Technology:</h4>\n<ul>\n    <li>Variable brightness control (100-1000 lumens) with memory function</li>\n    <li>Dual-beam technology illuminates ball and target line independently</li>\n    <li>Smart battery management with LED indicator</li>\n    <li>Bluetooth connectivity for mobile app control</li>\n    <li>Premium carbon fiber and titanium construction</li>\n    <li>Advanced optics for zero shadow casting</li>\n</ul>\n\n<h4>Professional Performance:</h4>\n<p>Used by golf instructors and serious players worldwide, the Pro System's adjustable brightness and\ndual-beam technology ensure perfect visibility in any lighting condition. The companion mobile app\ntracks your practice sessions and provides performance analytics.</p>",
+    "features": [
+      "100-1000 lumen adjustable brightness",
+      "Dual-beam independent lighting",
+      "12-15 hour battery life",
+      "Bluetooth app connectivity",
+      "Carbon fiber & titanium build",
+      "Smart battery management",
+      "Memory brightness settings",
+      "Zero shadow optics",
+      "Magnetic quick-release mount"
+    ],
+    "whats_included": [
+      "NitePutter Pro LED System",
+      "Magnetic Quick-Release Mount",
+      "USB-C Charging Cable (6ft)",
+      "Protective Carrying Case",
+      "Mobile App Access Code",
+      "Professional Setup Guide",
+      "Premium Warranty Package"
+    ],
+    "price": 299.99,
+    "compare_at_price": 349.99,
+    "cost_per_unit": 95,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "NitePutter Pro LED System complete kit",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": "https://youtube.com/watch?v=niteputter-pro-demo",
+    "instruction_manual_url": "/manuals/niteputter-pro-manual.pdf",
+    "specifications": {
+      "weight": "62g",
+      "material": "Carbon fiber & titanium alloy",
+      "warranty": "3 year premium warranty",
+      "battery_life": "12-15 hours continuous use",
+      "charging_time": "3 hours full charge",
+      "led_brightness": "100-1000 lumens adjustable",
+      "water_resistance": "IPX7 rated"
+    },
+    "shipping": {
+      "width": 8,
+      "height": 4,
+      "length": 10,
+      "weight": 1.2,
+      "ships_separately": false
+    },
+    "inventory": {
+      "quantity": 150,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 15
+    },
+    "seo": {
+      "keywords": [
+        "professional golf light",
+        "adjustable putting light",
+        "bluetooth golf light",
+        "PGA training aid",
+        "premium golf accessories"
+      ],
+      "url_slug": "niteputter-pro-led-system",
+      "meta_title": "NitePutter Pro LED System | Professional Golf Lighting",
+      "meta_description": "Professional golf lighting with the NitePutter Pro LED System. Adjustable 100-1000 lumens, Bluetooth connectivity, 12-15 hour battery. Used by PGA pros."
+    },
+    "average_rating": 4.9,
+    "review_count": 89,
+    "created_at": "2025-10-21T23:54:45.499377+00:00",
+    "updated_at": "2025-10-21T23:54:45.499377+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  },
+  {
+    "id": "d9402d95-b552-4168-ae65-818dc7caaccd",
+    "sku": "NPP-COMPLETE-001",
+    "name": "NitePutter Complete Practice Kit",
+    "slug": "niteputter-complete-practice-kit",
+    "category": "complete",
+    "status": "active",
+    "short_description": "Complete night golf practice solution with lights, targets, and training aids",
+    "description": "<h3>Everything You Need for 24/7 Practice</h3>\n<p>The NitePutter Complete Practice Kit is the ultimate solution for golfers serious about improving\ntheir putting game. This comprehensive package includes everything needed to create a professional\npractice environment at home or on the course, day or night.</p>\n\n<h4>Complete Package Includes:</h4>\n<ul>\n    <li>NitePutter Pro LED System with all accessories</li>\n    <li>Set of 6 illuminated target cups with auto-return</li>\n    <li>LED alignment sticks (set of 3)</li>\n    <li>Glow-in-the-dark practice balls (dozen)</li>\n    <li>Portable putting mat with built-in lighting</li>\n    <li>Professional training guide and video series access</li>\n</ul>\n\n<h4>Transform Your Practice:</h4>\n<p>Whether you're practicing in your backyard, basement, or at the course after dark, this complete\nkit provides everything needed for effective practice sessions. The illuminated targets and alignment\naids ensure you're building proper muscle memory and improving your accuracy.</p>",
+    "features": [
+      "NitePutter Pro LED System included",
+      "6 illuminated auto-return cups",
+      "3 LED alignment sticks",
+      "12 glow practice balls",
+      "10ft x 3ft illuminated mat",
+      "Mobile app with drills",
+      "Video training library access",
+      "Portable storage system",
+      "Weather-resistant components"
+    ],
+    "whats_included": [
+      "NitePutter Pro LED System",
+      "6 Illuminated Target Cups",
+      "3 LED Alignment Sticks",
+      "12 Glow Practice Balls",
+      "Portable Illuminated Putting Mat",
+      "Deluxe Carrying Bag",
+      "USB Charging Hub",
+      "Professional Training Guide",
+      "1-Year Video Library Access",
+      "Complete Warranty Package"
+    ],
+    "price": 599.99,
+    "compare_at_price": 749.99,
+    "cost_per_unit": 210,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "NitePutter Complete Practice Kit full setup",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": "https://youtube.com/watch?v=niteputter-complete-demo",
+    "instruction_manual_url": "/manuals/niteputter-complete-manual.pdf",
+    "specifications": {
+      "weight": "8.5 lbs total kit",
+      "material": "Mixed premium materials",
+      "warranty": "3 year comprehensive warranty",
+      "battery_life": "Varies by component (8-15 hours)",
+      "charging_time": "3-4 hours full charge all components",
+      "led_brightness": "100-1000 lumens (main light)",
+      "water_resistance": "IPX6-IPX7 rated components"
+    },
+    "shipping": {
+      "width": 12,
+      "height": 8,
+      "length": 36,
+      "weight": 12,
+      "ships_separately": true
+    },
+    "inventory": {
+      "quantity": 75,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 10
+    },
+    "seo": {
+      "keywords": [
+        "complete golf kit",
+        "night practice system",
+        "golf training kit",
+        "putting practice set",
+        "illuminated golf aids"
+      ],
+      "url_slug": "niteputter-complete-practice-kit",
+      "meta_title": "NitePutter Complete Practice Kit | Full Night Golf Training System",
+      "meta_description": "Complete night golf practice solution with NitePutter Pro LED, illuminated targets, alignment aids, and training materials. Everything for 24/7 practice."
+    },
+    "average_rating": 4.8,
+    "review_count": 56,
+    "created_at": "2025-10-21T23:54:45.644325+00:00",
+    "updated_at": "2025-10-21T23:54:45.644325+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  },
+  {
+    "id": "c721a0ee-ba33-4905-bf3e-4c750b251e36",
+    "sku": "NPP-ACC-BATTERY-001",
+    "name": "NitePutter Extra Battery Pack",
+    "slug": "niteputter-extra-battery-pack",
+    "category": "accessories",
+    "status": "active",
+    "short_description": "High-capacity rechargeable battery pack for extended practice sessions",
+    "description": "<h3>Never Stop Practicing</h3>\n<p>Keep your NitePutter running all night with our high-capacity extra battery pack. Engineered\nspecifically for NitePutter products, this premium lithium-ion battery delivers consistent power\nand long life.</p>\n\n<h4>Features:</h4>\n<ul>\n    <li>5000mAh high-capacity lithium-ion cells</li>\n    <li>Compatible with all NitePutter LED products</li>\n    <li>LED charge indicator (4 levels)</li>\n    <li>Quick-swap magnetic connection</li>\n    <li>Simultaneous charge while in use capability</li>\n</ul>",
+    "features": [
+      "5000mAh capacity",
+      "15+ hour runtime",
+      "Quick-swap magnetic mount",
+      "LED charge indicator",
+      "Pass-through charging",
+      "500+ charge cycles",
+      "Overcharge protection",
+      "1-year battery warranty"
+    ],
+    "whats_included": [
+      "Extra Battery Pack",
+      "USB-C Charging Cable",
+      "Protective Case",
+      "User Manual"
+    ],
+    "price": 49.99,
+    "compare_at_price": 59.99,
+    "cost_per_unit": 18,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "NitePutter Extra Battery Pack",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": null,
+    "instruction_manual_url": null,
+    "specifications": {
+      "weight": "120g",
+      "material": "ABS plastic housing",
+      "warranty": "1 year warranty",
+      "battery_life": "15+ hours",
+      "charging_time": "3 hours",
+      "led_brightness": "N/A",
+      "water_resistance": "IPX4 rated"
+    },
+    "shipping": {
+      "width": 3,
+      "height": 2,
+      "length": 4,
+      "weight": 0.5,
+      "ships_separately": false
+    },
+    "inventory": {
+      "quantity": 200,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 25
+    },
+    "seo": {
+      "keywords": [
+        "golf light battery",
+        "niteputter battery",
+        "rechargeable battery pack",
+        "golf accessories"
+      ],
+      "url_slug": "niteputter-extra-battery-pack",
+      "meta_title": "NitePutter Extra Battery Pack | Extended Practice Power",
+      "meta_description": "5000mAh extra battery pack for NitePutter LED lights. 15+ hour runtime, quick-swap design. Never stop practicing."
+    },
+    "average_rating": 4.6,
+    "review_count": 78,
+    "created_at": "2025-10-21T23:54:45.798355+00:00",
+    "updated_at": "2025-10-21T23:54:45.798355+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  },
+  {
+    "id": "57478bf3-ed10-4a34-a2b8-0722cff7fb05",
+    "sku": "NPP-ACC-MOUNT-001",
+    "name": "Universal Magnetic Mount Kit",
+    "slug": "universal-magnetic-mount-kit",
+    "category": "accessories",
+    "status": "active",
+    "short_description": "Magnetic mounting system for any putter style with quick-release design",
+    "description": "<h3>Mount to Any Putter in Seconds</h3>\n<p>Our Universal Magnetic Mount Kit ensures your NitePutter light fits perfectly on any putter,\nfrom blade to mallet styles. The powerful neodymium magnets provide secure attachment while the\nquick-release design lets you switch between clubs instantly.</p>\n\n<h4>Universal Compatibility:</h4>\n<ul>\n    <li>Fits blade, mallet, and center-shaft putters</li>\n    <li>Adjustable angle for optimal light positioning</li>\n    <li>Non-marking protective padding</li>\n    <li>Tool-free installation</li>\n</ul>",
+    "features": [
+      "Universal putter fit",
+      "Neodymium magnets",
+      "Quick-release design",
+      "360° adjustable angle",
+      "Non-marking pads",
+      "Aluminum construction",
+      "Tool-free setup",
+      "Lifetime warranty"
+    ],
+    "whats_included": [
+      "Magnetic Mount Base",
+      "3 Adapter Plates (different sizes)",
+      "Protective Pads Set",
+      "Installation Guide"
+    ],
+    "price": 29.99,
+    "compare_at_price": 39.99,
+    "cost_per_unit": 11,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "Universal Magnetic Mount Kit",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": null,
+    "instruction_manual_url": null,
+    "specifications": {
+      "weight": "35g",
+      "material": "Aluminum & neodymium",
+      "warranty": "Lifetime warranty",
+      "battery_life": "N/A",
+      "charging_time": "N/A",
+      "led_brightness": "N/A",
+      "water_resistance": "IPX6 rated"
+    },
+    "shipping": {
+      "width": 4,
+      "height": 2,
+      "length": 5,
+      "weight": 0.3,
+      "ships_separately": false
+    },
+    "inventory": {
+      "quantity": 300,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 30
+    },
+    "seo": {
+      "keywords": [
+        "putter mount",
+        "magnetic golf mount",
+        "niteputter mount",
+        "golf light mount"
+      ],
+      "url_slug": "universal-magnetic-mount-kit",
+      "meta_title": "Universal Magnetic Mount Kit for NitePutter",
+      "meta_description": "Quick-release magnetic mount for NitePutter lights. Fits all putter styles. Tool-free installation with lifetime warranty."
+    },
+    "average_rating": 4.7,
+    "review_count": 124,
+    "created_at": "2025-10-21T23:54:45.938259+00:00",
+    "updated_at": "2025-10-21T23:54:45.938259+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  },
+  {
+    "id": "78f96f1d-81fc-49d5-8911-4a7a32a41b2b",
+    "sku": "NPP-ACC-TARGETS-001",
+    "name": "LED Target Cup Set (6 Pack)",
+    "slug": "led-target-cup-set",
+    "category": "accessories",
+    "status": "active",
+    "short_description": "Illuminated practice cups with auto-return feature for night putting drills",
+    "description": "<h3>Perfect Your Aim Day or Night</h3>\n<p>Transform any practice area into a professional training ground with our LED Target Cup Set.\nEach cup features bright LED illumination and an auto-return mechanism that sends the ball back\nto you after successful putts.</p>\n\n<h4>Smart Training Features:</h4>\n<ul>\n    <li>6 different colored LEDs for varied drills</li>\n    <li>Auto-return ball mechanism</li>\n    <li>Adjustable LED brightness</li>\n    <li>Regulation cup size (4.25 inches)</li>\n    <li>Indoor/outdoor compatible</li>\n</ul>",
+    "features": [
+      "6 illuminated cups",
+      "Auto-return mechanism",
+      "6 color options",
+      "Adjustable brightness",
+      "Regulation size",
+      "Rechargeable batteries",
+      "Weather resistant",
+      "Storage case included"
+    ],
+    "whats_included": [
+      "6 LED Target Cups",
+      "USB Charging Hub",
+      "Protective Storage Case",
+      "Training Guide"
+    ],
+    "price": 149.99,
+    "compare_at_price": 179.99,
+    "cost_per_unit": 52,
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/df8dgkln1/image/upload/v1729532341/golf-cup-light_c6ivrl.jpg",
+        "alt_text": "LED Target Cup Set illuminated",
+        "is_primary": true,
+        "display_order": 0
+      }
+    ],
+    "video_url": null,
+    "instruction_manual_url": null,
+    "specifications": {
+      "weight": "2.4 lbs (set)",
+      "material": "Impact-resistant polymer",
+      "warranty": "2 year warranty",
+      "battery_life": "8-10 hours per charge",
+      "charging_time": "2 hours",
+      "led_brightness": "Adjustable",
+      "water_resistance": "IPX5 rated"
+    },
+    "shipping": {
+      "width": 8,
+      "height": 6,
+      "length": 12,
+      "weight": 3,
+      "ships_separately": false
+    },
+    "inventory": {
+      "quantity": 100,
+      "allow_backorder": true,
+      "track_inventory": true,
+      "reserved_quantity": 0,
+      "low_stock_threshold": 15
+    },
+    "seo": {
+      "keywords": [
+        "putting cups",
+        "LED golf cups",
+        "practice cups",
+        "putting targets",
+        "golf training aids"
+      ],
+      "url_slug": "led-target-cup-set",
+      "meta_title": "LED Target Cup Set | Illuminated Putting Practice Cups",
+      "meta_description": "6-pack LED target cups with auto-return for night putting practice. Adjustable brightness, multiple colors, regulation size."
+    },
+    "average_rating": 4.8,
+    "review_count": 92,
+    "created_at": "2025-10-21T23:54:46.08502+00:00",
+    "updated_at": "2025-10-21T23:54:46.08502+00:00",
+    "published_at": null,
+    "related_products": [],
+    "cross_sells": []
+  }
+]
