@@ -16,6 +16,7 @@ import { theme } from '../../lib/theme';
 import { useAuthStore } from '../../store';
 import { validateEmail, validatePassword } from '../../lib/utils';
 import { SignupScreenProps } from '../../types/navigation';
+import { AntDesign } from '@expo/vector-icons';
 
 export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -191,6 +192,16 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
     Alert.alert('Privacy Policy', 'Privacy Policy content would be displayed here.');
   };
 
+  const handleGoogleSignup = () => {
+    // TODO: Implement Google OAuth signup
+    Alert.alert('Google Signup', 'Google OAuth signup would be implemented here.');
+  };
+
+  const handleAppleSignup = () => {
+    // TODO: Implement Apple OAuth signup
+    Alert.alert('Apple Signup', 'Apple OAuth signup would be implemented here.');
+  };
+
   return (
     <View style={styles.container}>
       {/* Beautiful iOS-style Sky Background */}
@@ -321,6 +332,29 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
                 </View>
               </View>
 
+              {/* SSO Buttons */}
+              <View style={styles.ssoContainer}>
+                <Text style={styles.ssoText}>Or continue with</Text>
+
+                <View style={styles.ssoButtons}>
+                  <TouchableOpacity
+                    onPress={handleGoogleSignup}
+                    style={styles.ssoButton}
+                  >
+                    <AntDesign name="google" size={20} color="#4285F4" />
+                    <Text style={styles.ssoButtonText}>Google</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleAppleSignup}
+                    style={styles.ssoButton}
+                  >
+                    <AntDesign name="apple" size={20} color="#000000" />
+                    <Text style={styles.ssoButtonText}>Apple</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <TouchableOpacity
                 onPress={handleSignup}
                 disabled={isLoading}
@@ -432,7 +466,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 30,
     elevation: 15,
-    backdropFilter: 'blur(20px)',
   },
   form: {
     marginBottom: 0,
@@ -516,6 +549,38 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  ssoContainer: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  ssoText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    marginBottom: 16,
+  },
+  ssoButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  ssoButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+    gap: 8,
+  },
+  ssoButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '500',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 });
