@@ -47,45 +47,76 @@ export interface BLEBrightnessCommand {
   brightness: number; // 0-100
 }
 
-// ACTUAL SP105E Controller Constants (from reverse engineering research)
-const SP105E_SERVICE_UUID = 'FFE0'; // CORRECTED: SP105E actually uses FFE0 service UUID
-const SP105E_CHARACTERISTIC_MAIN = 'FFE1'; // CORRECTED: SP105E actually uses FFE1 characteristic
-const SP105E_CHARACTERISTIC_INIT = 'FFF2'; // Secondary characteristic for initialization
+/**
+ * SP105E LED Controller Protocol Implementation
+ *
+ * PROTOCOL ANALYSIS FROM LIGHTBLUE APP:
+ * - Service UUID: FFE0 (confirmed working)
+ * - Characteristic UUID: FFE1 (confirmed working)
+ * - Write Method: writeWithoutResponse preferred
+ * - LightBlue showed: 01CB 0204 0400 0258 (8 bytes)
+ *
+ * REVISED PROTOCOL (based on SP105E documentation):
+ * - Color: [0x38, R, G, B] (4 bytes)
+ * - Brightness: [0x3A, brightness] (2 bytes, 0-255)
+ * - Pattern: [0x3C, pattern, speed] (3 bytes)
+ * - Power On: [0x71, 0x23, 0x0F, 0xA3] (4 bytes)
+ * - Power Off: [0x71, 0x24, 0x0F, 0xA4] (4 bytes)
+ *
+ * FALLBACK PROTOCOL:
+ * - Alternative Color: [0x56, R, G, B, 0x00, 0xF0, 0xAA] (7 bytes)
+ *
+ * CHANGES MADE:
+ * - Removed complex 8-byte protocol with checksums
+ * - Simplified to standard SP105E commands
+ * - Added command queuing to prevent conflicts
+ * - Added fallback protocols for compatibility
+ * - Focused service discovery on confirmed FFE0/FFE1
+ */
+
+// SP105E Controller Constants (from LightBlue analysis)
+const SP105E_SERVICE_UUID = 'FFE0'; // Confirmed from LightBlue: FFE0 service
+const SP105E_CHARACTERISTIC_MAIN = 'FFE1'; // Confirmed from LightBlue: FFE1 characteristic
 const SP105E_DEVICE_NAMES = ['SP105E', 'Magic-LED', 'BLE-LED', 'LED-BLE'];
 
-// ACTUAL SP105E Protocol (8-byte commands to FFE0/FFE1)
-// Based on LightBlue analysis: Current value = 01CB 0204 0400 0258 (8 bytes)
-// Format: [HEADER1, HEADER2, CMD, DATA1, DATA2, DATA3, CHECKSUM1, CHECKSUM2]
+// SP105E Protocol Implementation
+// Based on LightBlue analysis showing: 01CB 0204 0400 0258 (8 bytes)
+// Research shows SP105E uses simple command structure:
+// [0x38, RED, GREEN, BLUE] for color commands
+// [0x3A, BRIGHTNESS] for brightness commands
+// [0x3C, PATTERN, SPEED] for effect commands
 const SP105E_PROTOCOL = {
-  // Power control commands
-  POWER_ON: new Uint8Array([0x01, 0xCB, 0x01, 0xFF, 0xFF, 0xFF, 0x02, 0x66]),
-  POWER_OFF: new Uint8Array([0x01, 0xCB, 0x02, 0x00, 0x00, 0x00, 0x02, 0x68]),
+  // Power control commands (standard SP105E format)
+  POWER_ON: new Uint8Array([0x71, 0x23, 0x0F, 0xA3]),
+  POWER_OFF: new Uint8Array([0x71, 0x24, 0x0F, 0xA4]),
 
-  // RGB Color command: [0x01, 0xCB, 0x03, R, G, B, 0x02, CHECKSUM]
+  // RGB Color command: Simple 4-byte format
   SET_COLOR: (r: number, g: number, b: number) => {
-    const checksum = (0x01 + 0xCB + 0x03 + r + g + b + 0x02) & 0xFF;
-    return new Uint8Array([0x01, 0xCB, 0x03, r, g, b, 0x02, checksum]);
+    return new Uint8Array([0x38, r, g, b]);
   },
 
-  // Brightness command: [0x01, 0xCB, 0x04, brightness, 0x00, 0x00, 0x02, CHECKSUM]
+  // Brightness command: 2-byte format
   SET_BRIGHTNESS: (brightness: number) => {
-    const checksum = (0x01 + 0xCB + 0x04 + brightness + 0x00 + 0x00 + 0x02) & 0xFF;
-    return new Uint8Array([0x01, 0xCB, 0x04, brightness, 0x00, 0x00, 0x02, checksum]);
+    // SP105E expects brightness 0-255, convert from 0-100
+    const sp105eBrightness = Math.round((brightness / 100) * 255);
+    return new Uint8Array([0x3A, sp105eBrightness]);
   },
 
-  // Effect/Pattern command: [0x01, 0xCB, 0x05, pattern, speed, 0x00, 0x02, CHECKSUM]
+  // Effect/Pattern command: 3-byte format
   SET_PATTERN: (pattern: number, speed: number = 50) => {
-    const checksum = (0x01 + 0xCB + 0x05 + pattern + speed + 0x00 + 0x02) & 0xFF;
-    return new Uint8Array([0x01, 0xCB, 0x05, pattern, speed, 0x00, 0x02, checksum]);
+    // Convert speed from 0-100 to 0-255
+    const sp105eSpeed = Math.round((speed / 100) * 255);
+    return new Uint8Array([0x3C, pattern, sp105eSpeed]);
   },
 
-  // Pixel count setting: [0x01, 0xCB, 0x06, count_low, count_high, 0x00, 0x02, CHECKSUM]
-  SET_PIXEL_COUNT: (count: number) => {
-    const countLow = count & 0xFF;
-    const countHigh = (count >> 8) & 0xFF;
-    const checksum = (0x01 + 0xCB + 0x06 + countLow + countHigh + 0x00 + 0x02) & 0xFF;
-    return new Uint8Array([0x01, 0xCB, 0x06, countLow, countHigh, 0x00, 0x02, checksum]);
+  // Alternative color format that may work better
+  SET_COLOR_ALT: (r: number, g: number, b: number) => {
+    // Some SP105E variants use this format
+    return new Uint8Array([0x56, r, g, b, 0x00, 0xF0, 0xAA]);
   },
+
+  // Initialize command
+  INITIALIZE: new Uint8Array([0x38, 0x00, 0x00, 0x00]), // Set to black initially
 };
 
 // Use the actual SP105E protocol
@@ -112,6 +143,9 @@ class BLEService {
   private isScanning = false;
   private bleManager: BleManager;
   private connectedDevices = new Map<string, BLEConnectionState>();
+  private connectedCharacteristics = new Map<string, any>();
+  private commandQueue = new Map<string, Array<() => Promise<void>>>();
+  private isProcessingCommands = new Map<string, boolean>();
   private scanListeners: ((devices: BLEDevice[]) => void)[] = [];
   private connectionListeners: ((state: BLEConnectionState) => void)[] = [];
   private discoveredDevices = new Map<string, BLEDevice>();
@@ -277,128 +311,67 @@ class BLEService {
       const services = await deviceWithServices.services();
       console.log('Available services:', services.map(s => `${s.uuid} (${s.deviceID})`));
 
-      // Find SP105E service - try ALL possible service UUIDs for SP105E/Magic-LED
-      let sp105eService = services.find(service => {
+      // Find SP105E service - specifically look for FFE0 (confirmed from LightBlue)
+      const sp105eService = services.find(service => {
         const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-        return uuid === 'fff0' ||
-               uuid.includes('fff0') ||
-               uuid === 'ffe0' ||
-               uuid.includes('ffe0') ||
-               service.uuid.toLowerCase() === 'fff0' ||
-               service.uuid.toLowerCase() === 'ffe0';
+        return uuid === 'ffe0' || uuid.includes('ffe0');
       });
 
-      // If no specific service found, try any service for debugging
-      if (!sp105eService && services.length > 0) {
-        console.log(`🔍 No FFF0/FFE0 service found, trying first available service for debugging...`);
-        console.log(`📋 Available services: ${services.map(s => s.uuid).join(', ')}`);
-        sp105eService = services[0]; // Use first available service
-        console.log(`🔧 Using service: ${sp105eService.uuid} for SP105E commands`);
-      }
+      console.log(`🔍 Looking for FFE0 service...`);
+      console.log(`📋 Available services: ${services.map(s => s.uuid).join(', ')}`);
 
       if (!sp105eService) {
-        console.error(`❌ CRITICAL: No services found on device!`);
-        console.error(`📋 Available services: ${services.map(s => s.uuid).join(', ')}`);
-
-        // Still create connection for debugging
-        const connectionState: BLEConnectionState = {
-          deviceId,
-          isConnected: true,
-          batteryLevel: 100,
-          firmwareVersion: 'No-Service-Debug',
-        };
-        this.connectedDevices.set(deviceId, connectionState);
-        this.notifyConnectionListeners(connectionState);
-        return;
+        console.error(`❌ SP105E service FFE0 not found!`);
+        console.error(`📋 This device may not be a compatible SP105E controller`);
+        throw new Error(`SP105E service FFE0 not found. Available services: ${services.map(s => s.uuid).join(', ')}`);
       }
 
       console.log('SP105E service found, checking characteristics...');
       const characteristics = await sp105eService.characteristics();
-      console.log('Available characteristics:', characteristics.map(c => `${c.uuid} (isWritableWithResponse: ${c.isWritableWithResponse}, isWritableWithoutResponse: ${c.isWritableWithoutResponse})`));
+      console.log('Available characteristics:', characteristics.map(c => `${c.uuid} (writable: ${c.isWritableWithoutResponse}/${c.isWritableWithResponse})`));
 
-      // Find the write characteristic for SP105E - try ALL possible characteristics
-      let writeCharacteristic = characteristics.find(char =>
-        char.uuid.toLowerCase() === SP105E_CHARACTERISTIC_MAIN.toLowerCase()
-      );
-
-      // Try FFF3 variations
-      if (!writeCharacteristic) {
-        console.log('🔍 Exact FFF3 match failed, trying FFF3 variations...');
-        writeCharacteristic = characteristics.find(char => {
-          const uuid = char.uuid.toLowerCase().replace(/-/g, '');
-          return uuid.includes('fff3') || uuid === 'fff3';
-        });
-        if (writeCharacteristic) {
-          console.log(`✅ Found FFF3 characteristic: ${writeCharacteristic.uuid}`);
-        }
-      }
-
-      // Try FFE1 for older SP105E variants
-      if (!writeCharacteristic) {
-        console.log('🔍 No FFF3 found, trying FFE1 for older SP105E variants...');
-        writeCharacteristic = characteristics.find(char => {
-          const uuid = char.uuid.toLowerCase().replace(/-/g, '');
-          return uuid.includes('ffe1') || uuid === 'ffe1';
-        });
-        if (writeCharacteristic) {
-          console.log(`✅ Found FFE1 characteristic: ${writeCharacteristic.uuid}`);
-        }
-      }
-
-      // Try any writable characteristic
-      if (!writeCharacteristic) {
-        console.log('🔍 No specific characteristics found, trying ANY writable characteristic...');
-        writeCharacteristic = characteristics.find(char =>
-          char.isWritableWithResponse || char.isWritableWithoutResponse
-        );
-        if (writeCharacteristic) {
-          console.log(`✅ Found writable characteristic: ${writeCharacteristic.uuid}`);
-        }
-      }
-
-      if (!writeCharacteristic) {
-        // Log all characteristics for debugging
-        console.error('No suitable characteristics found. All characteristics:',
-          characteristics.map(c => ({
-            uuid: c.uuid,
-            isWritableWithResponse: c.isWritableWithResponse,
-            isWritableWithoutResponse: c.isWritableWithoutResponse,
-            isReadable: c.isReadable,
-            isNotifiable: c.isNotifiable
-          }))
-        );
-        throw new Error(`SP105E control characteristic not found. Available: ${characteristics.map(c => c.uuid).join(', ')}`);
-      }
-
-      // Initialize SP105E with correct 4-byte protocol
-      console.log('\n🚀 STARTING SP105E INITIALIZATION');
-      console.log(`📋 Using Service: ${SP105E_SERVICE_UUID}, Characteristic: ${SP105E_CHARACTERISTIC_MAIN}`);
-      console.log(`📋 Found ${characteristics.length} characteristics`);
-      characteristics.forEach(char => {
-        console.log(`  - ${char.uuid} (write: ${char.isWritableWithoutResponse}/${char.isWritableWithResponse}, read: ${char.isReadable})`);
+      // Find FFE1 characteristic (confirmed from LightBlue analysis)
+      const writeCharacteristic = characteristics.find(char => {
+        const uuid = char.uuid.toLowerCase().replace(/-/g, '');
+        return uuid === 'ffe1' || uuid.includes('ffe1');
       });
 
-      // Send SP105E Power On command to initialize (4-byte format)
+      if (!writeCharacteristic) {
+        console.error(`❌ SP105E characteristic FFE1 not found!`);
+        console.error(`📋 Available characteristics: ${characteristics.map(c => c.uuid).join(', ')}`);
+        throw new Error(`SP105E characteristic FFE1 not found. Available: ${characteristics.map(c => c.uuid).join(', ')}`);
+      }
+
+      console.log(`✅ Found FFE1 characteristic: ${writeCharacteristic.uuid}`);
+      console.log(`📝 Write capabilities: withResponse=${writeCharacteristic.isWritableWithResponse}, withoutResponse=${writeCharacteristic.isWritableWithoutResponse}`);
+
+      // Initialize SP105E with proper command sequence
+      console.log('\n🚀 STARTING SP105E INITIALIZATION');
+      console.log(`📋 Using Service: ${SP105E_SERVICE_UUID}, Characteristic: ${SP105E_CHARACTERISTIC_MAIN}`);
+
+      // Store characteristic for later use
+      this.connectedCharacteristics = this.connectedCharacteristics || new Map();
+      this.connectedCharacteristics.set(deviceId, writeCharacteristic);
+
+      // Send SP105E initialization sequence
       try {
-        console.log(`\n🔌 SENDING SP105E POWER ON COMMAND`);
-        const powerOnCommand = SP105E_PROTOCOL.POWER_ON;
-        console.log(`📤 Power On bytes:`, Array.from(powerOnCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-        console.log(`📤 Expected format: 4-byte command [0x01, 0x00, 0x00, 0x01]`);
+        console.log(`\n🔌 SENDING SP105E INITIALIZATION SEQUENCE`);
 
-        // Send power on command
-        if (writeCharacteristic.isWritableWithoutResponse) {
-          await writeCharacteristic.writeWithoutResponse(
-            uint8ArrayToBase64(powerOnCommand)
-          );
-          console.log(`✅ SP105E POWER_ON command sent via writeWithoutResponse`);
-        } else if (writeCharacteristic.isWritableWithResponse) {
-          await writeCharacteristic.writeWithResponse(
-            uint8ArrayToBase64(powerOnCommand)
-          );
-          console.log(`✅ SP105E POWER_ON command sent via writeWithResponse`);
-        }
+        // Step 1: Initialize with black color (turns on device if needed)
+        const initCommand = SP105E_PROTOCOL.INITIALIZE;
+        console.log(`📤 Init bytes:`, Array.from(initCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
 
-        await delay(100); // Brief delay for initialization
+        await this.sendCommandToDevice(deviceId, initCommand);
+        await delay(200); // Allow device to initialize
+
+        // Step 2: Set a default color to verify communication
+        const testColor = SP105E_PROTOCOL.SET_COLOR(0, 255, 0); // Green
+        console.log(`📤 Test color bytes:`, Array.from(testColor).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+        await this.sendCommandToDevice(deviceId, testColor);
+        await delay(100);
+
+        console.log(`✅ SP105E initialization sequence completed`);
 
       } catch (initError) {
         console.error(`❌ SP105E initialization failed:`, initError.message);
@@ -442,13 +415,18 @@ class BLEService {
 
   async disconnectFromDevice(deviceId: string): Promise<void> {
     try {
-      // Only disconnect from real BLE devices
+      console.log(`🔌 Disconnecting from device: ${deviceId}`);
 
-      // Real device disconnection
+      // Cancel BLE connection
       const device = await this.bleManager.devices([deviceId]);
       if (device.length > 0) {
         await device[0].cancelConnection();
       }
+
+      // Clean up stored data
+      this.connectedCharacteristics.delete(deviceId);
+      this.commandQueue.delete(deviceId);
+      this.isProcessingCommands.delete(deviceId);
 
       const connectionState = this.connectedDevices.get(deviceId);
       if (connectionState) {
@@ -456,8 +434,10 @@ class BLEService {
         this.connectedDevices.delete(deviceId);
         this.notifyConnectionListeners(connectionState);
       }
+
+      console.log(`✅ Successfully disconnected from ${deviceId}`);
     } catch (error) {
-      console.error('Failed to disconnect from device:', error);
+      console.error('❌ Failed to disconnect from device:', error);
       throw error;
     }
   }
@@ -474,102 +454,33 @@ class BLEService {
       throw new Error('Invalid color values. RGB values must be 0-255');
     }
 
-    console.log(`\n🔄 STARTING COLOR COMMAND DEBUG for ${deviceId}`);
-    console.log(`📤 Input RGB:`, command);
+    console.log(`\n🎨 SENDING SP105E COLOR COMMAND to ${deviceId}`);
+    console.log(`📤 Input RGB: ${command.red}, ${command.green}, ${command.blue}`);
 
     try {
-      const device = await this.bleManager.devices([deviceId]);
-      if (device.length === 0) {
-        throw new Error('Device not found');
+      // Try primary protocol first
+      let colorCommand = SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
+      console.log(`📤 Primary command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+      try {
+        await this.sendCommandToDevice(deviceId, colorCommand);
+        console.log(`✅ SP105E color command sent successfully with primary protocol`);
+        return;
+      } catch (primaryError) {
+        console.log(`⚠️ Primary protocol failed, trying alternative...`);
+
+        // Try alternative protocol
+        colorCommand = SP105E_PROTOCOL.SET_COLOR_ALT(command.red, command.green, command.blue);
+        console.log(`📤 Alternative command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+
+        await this.sendCommandToDevice(deviceId, colorCommand);
+        console.log(`✅ SP105E color command sent successfully with alternative protocol`);
       }
 
-      console.log(`🔍 Device found: ${device[0].name || device[0].id}`);
-
-      const services = await device[0].services();
-      console.log(`📋 Available services:`, services.map(s => s.uuid));
-
-      let sp105eService = services.find(service =>
-        service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
-      );
-
-      // Try to find ANY usable service if specific not found
-      if (!sp105eService) {
-        console.log(`🔍 SP105E service (${SP105E_SERVICE_UUID}) not found, trying fallbacks...`);
-
-        // Try FFF0 variations
-        sp105eService = services.find(service => {
-          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-          return uuid.includes('fff0') || uuid === 'fff0';
-        });
-
-        // Try FFE0 variations
-        if (!sp105eService) {
-          sp105eService = services.find(service => {
-            const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-            return uuid.includes('ffe0') || uuid === 'ffe0';
-          });
-        }
-
-        // Use first available service if nothing else works
-        if (!sp105eService && services.length > 0) {
-          console.log(`🔧 No specific services found, using first available: ${services[0].uuid}`);
-          sp105eService = services[0];
-        }
-      }
-
-      if (!sp105eService) {
-        console.error(`❌ No usable service found! Available services: ${services.map(s => s.uuid).join(', ')}`);
-        throw new Error('SP105E service not found');
-      }
-
-      console.log(`✅ SP105E service found: ${sp105eService.uuid}`);
-
-      const characteristics = await sp105eService.characteristics();
-      console.log(`📋 Available characteristics:`, characteristics.map(c => ({
-        uuid: c.uuid,
-        isWritableWithResponse: c.isWritableWithResponse,
-        isWritableWithoutResponse: c.isWritableWithoutResponse
-      })));
-
-      const writeCharacteristic = await this.findWriteCharacteristic(sp105eService);
-      if (!writeCharacteristic) {
-        throw new Error('SP105E control characteristic not found');
-      }
-
-      console.log(`✅ Write characteristic found: ${writeCharacteristic.uuid}`);
-      console.log(`📝 Characteristic capabilities: writeWithResponse=${writeCharacteristic.isWritableWithResponse}, writeWithoutResponse=${writeCharacteristic.isWritableWithoutResponse}`);
-
-      // Send SP105E color command (8-byte protocol based on LightBlue analysis)
-      console.log(`\n🎨 SENDING SP105E 8-BYTE COLOR COMMAND`);
-      const colorCommand = SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
-
-      console.log(`🎨 Color RGB: ${command.red}, ${command.green}, ${command.blue}`);
-      console.log(`📤 SP105E 8-byte command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=03, R=${command.red.toString(16).padStart(2, '0').toUpperCase()}, G=${command.green.toString(16).padStart(2, '0').toUpperCase()}, B=${command.blue.toString(16).padStart(2, '0').toUpperCase()}, CHK1=02, CHK2=CALC]`);
-      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
-
-      // Send the color command to SP105E
-      if (writeCharacteristic.isWritableWithoutResponse) {
-        console.log(`📡 Sending color command via writeWithoutResponse...`);
-        await writeCharacteristic.writeWithoutResponse(
-          uint8ArrayToBase64(colorCommand)
-        );
-        console.log(`✅ SP105E color command sent successfully!`);
-      } else if (writeCharacteristic.isWritableWithResponse) {
-        console.log(`📡 Sending color command via writeWithResponse...`);
-        await writeCharacteristic.writeWithResponse(
-          uint8ArrayToBase64(colorCommand)
-        );
-        console.log(`✅ SP105E color command sent successfully!`);
-      } else {
-        throw new Error('No writable characteristic found for color command');
-      }
-
-      console.log(`\n🎯 SP105E color command sent for RGB(${command.red},${command.green},${command.blue})`);
-      console.log(`💡 Your SP105E LED ring should now display the new color!`);
+      console.log(`💡 Your SP105E LED ring should now display RGB(${command.red},${command.green},${command.blue})!`);
 
     } catch (error) {
-      console.error('❌ CRITICAL: Failed to send color command:', error);
+      console.error('❌ CRITICAL: Failed to send color command with all protocols:', error);
       throw error;
     }
   }
@@ -579,57 +490,13 @@ class BLEService {
       throw new Error('Device not connected');
     }
 
+    console.log(`\n🎭 SENDING SP105E MODE COMMAND to ${deviceId}`);
+    console.log(`🎯 Mode: ${command.mode}${command.speed ? `, Speed: ${command.speed}` : ''}`);
+
     try {
-      console.log(`\n🎭 STARTING SP105E MODE COMMAND for ${deviceId}`);
-      console.log(`🎯 Mode: ${command.mode}${command.speed ? `, Speed: ${command.speed}` : ''}`);
-
-      const device = await this.bleManager.devices([deviceId]);
-      if (device.length === 0) {
-        throw new Error('Device not found');
-      }
-
-      const services = await device[0].services();
-      let sp105eService = services.find(service =>
-        service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
-      );
-
-      // Try fallback service discovery
-      if (!sp105eService) {
-        console.log(`🔍 SP105E service (${SP105E_SERVICE_UUID}) not found, trying fallbacks...`);
-
-        // Try FFF0 variations
-        sp105eService = services.find(service => {
-          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-          return uuid.includes('fff0') || uuid === 'fff0';
-        });
-
-        // Try FFE0 variations
-        if (!sp105eService) {
-          sp105eService = services.find(service => {
-            const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-            return uuid.includes('ffe0') || uuid === 'ffe0';
-          });
-        }
-
-        // Use first available service if nothing else works
-        if (!sp105eService && services.length > 0) {
-          console.log(`🔧 No specific services found, using first available: ${services[0].uuid}`);
-          sp105eService = services[0];
-        }
-      }
-
-      if (!sp105eService) {
-        throw new Error('SP105E service not found');
-      }
-
-      const writeCharacteristic = await this.findWriteCharacteristic(sp105eService);
-      if (!writeCharacteristic) {
-        throw new Error('SP105E control characteristic not found');
-      }
-
       // Map cup modes to SP105E pattern numbers
       let patternNumber = 1;
-      let speed = command.speed || 5; // Default speed
+      let speed = command.speed || 50; // Default speed
 
       switch (command.mode) {
         case 'static':
@@ -649,34 +516,11 @@ class BLEService {
           patternNumber = 1;
       }
 
-      // Send SP105E pattern command (8-byte protocol based on LightBlue analysis)
-      console.log(`\n🎭 SENDING SP105E 8-BYTE PATTERN COMMAND`);
       const patternCommand = SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed);
+      console.log(`📤 Pattern command:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
 
-      console.log(`🎭 Mode: ${command.mode} -> Pattern: ${patternNumber}, Speed: ${speed}`);
-      console.log(`📤 SP105E 8-byte command:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=05, PATTERN=${patternNumber.toString(16).padStart(2, '0').toUpperCase()}, SPEED=${speed.toString(16).padStart(2, '0').toUpperCase()}, 00, CHK1=02, CHK2=CALC]`);
-      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
-
-      // Send the pattern command to SP105E
-      if (writeCharacteristic.isWritableWithoutResponse) {
-        console.log(`📡 Sending pattern command via writeWithoutResponse...`);
-        await writeCharacteristic.writeWithoutResponse(
-          uint8ArrayToBase64(patternCommand)
-        );
-        console.log(`✅ SP105E pattern command sent successfully!`);
-      } else if (writeCharacteristic.isWritableWithResponse) {
-        console.log(`📡 Sending pattern command via writeWithResponse...`);
-        await writeCharacteristic.writeWithResponse(
-          uint8ArrayToBase64(patternCommand)
-        );
-        console.log(`✅ SP105E pattern command sent successfully!`);
-      } else {
-        throw new Error('No writable characteristic found for pattern command');
-      }
-
-      console.log(`\n🎯 SP105E pattern command sent: ${command.mode} (Pattern ${patternNumber})`);
-      console.log(`💡 Your SP105E LED ring should now display the ${command.mode} effect!`);
+      await this.sendCommandToDevice(deviceId, patternCommand);
+      console.log(`✅ SP105E pattern command sent: ${command.mode} (Pattern ${patternNumber})`);
 
     } catch (error) {
       console.error('❌ CRITICAL: Failed to send mode command:', error);
@@ -693,72 +537,15 @@ class BLEService {
       throw new Error('Brightness must be between 0 and 100');
     }
 
-    console.log(`\n🔆 STARTING SP105E BRIGHTNESS COMMAND for ${deviceId}`);
-    console.log(`💪 Input brightness: ${command.brightness}%`);
+    console.log(`\n🔆 SENDING SP105E BRIGHTNESS COMMAND to ${deviceId}`);
+    console.log(`💡 Brightness: ${command.brightness}%`);
 
     try {
-      const device = await this.bleManager.devices([deviceId]);
-      if (device.length === 0) {
-        throw new Error('Device not found');
-      }
-
-      const services = await device[0].services();
-      let sp105eService = services.find(service =>
-        service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
-      );
-
-      // Try fallback service discovery for brightness commands
-      if (!sp105eService) {
-        sp105eService = services.find(service => {
-          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
-          return uuid.includes('fff0') || uuid === 'fff0' || uuid.includes('ffe0') || uuid === 'ffe0';
-        });
-
-        // Use any available service
-        if (!sp105eService && services.length > 0) {
-          console.log(`🔧 Using first available service for brightness: ${services[0].uuid}`);
-          sp105eService = services[0];
-        }
-      }
-
-      if (!sp105eService) {
-        throw new Error('SP105E service not found');
-      }
-
-      const writeCharacteristic = await this.findWriteCharacteristic(sp105eService);
-      if (!writeCharacteristic) {
-        throw new Error('SP105E control characteristic not found');
-      }
-
-      // Send SP105E brightness command (8-byte protocol based on LightBlue analysis)
-      console.log(`\n🔆 SENDING SP105E 8-BYTE BRIGHTNESS COMMAND`);
-
       const brightnessCommand = SP105E_PROTOCOL.SET_BRIGHTNESS(command.brightness);
+      console.log(`📤 Brightness command:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
 
-      console.log(`💡 Brightness: ${command.brightness}%`);
-      console.log(`📤 SP105E 8-byte command:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=04, BRIGHTNESS=${command.brightness.toString(16).padStart(2, '0').toUpperCase()}, 00, 00, CHK1=02, CHK2=CALC]`);
-      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
-
-      // Send the brightness command to SP105E
-      if (writeCharacteristic.isWritableWithoutResponse) {
-        console.log(`📡 Sending brightness command via writeWithoutResponse...`);
-        await writeCharacteristic.writeWithoutResponse(
-          uint8ArrayToBase64(brightnessCommand)
-        );
-        console.log(`✅ SP105E brightness command sent successfully!`);
-      } else if (writeCharacteristic.isWritableWithResponse) {
-        console.log(`📡 Sending brightness command via writeWithResponse...`);
-        await writeCharacteristic.writeWithResponse(
-          uint8ArrayToBase64(brightnessCommand)
-        );
-        console.log(`✅ SP105E brightness command sent successfully!`);
-      } else {
-        throw new Error('No writable characteristic found for brightness command');
-      }
-
-      console.log(`\n🎯 SP105E brightness command sent for ${command.brightness}%`);
-      console.log(`💡 Your SP105E LED ring brightness should now be updated!`);
+      await this.sendCommandToDevice(deviceId, brightnessCommand);
+      console.log(`✅ SP105E brightness command sent for ${command.brightness}%`);
 
     } catch (error) {
       console.error('❌ CRITICAL: Failed to send brightness command:', error);
@@ -832,35 +619,77 @@ class BLEService {
   private async findWriteCharacteristic(service: any): Promise<any> {
     const characteristics = await service.characteristics();
 
-    // Try exact FFF3 match first
-    let writeCharacteristic = characteristics.find(char =>
-      char.uuid.toLowerCase() === SP105E_CHARACTERISTIC_MAIN.toLowerCase()
-    );
-
-    // Try FFF3 variations
-    if (!writeCharacteristic) {
-      writeCharacteristic = characteristics.find(char => {
-        const uuid = char.uuid.toLowerCase().replace(/-/g, '');
-        return uuid.includes('fff3') || uuid === 'fff3';
-      });
-    }
-
-    // Try FFE1 for older SP105E variants
-    if (!writeCharacteristic) {
-      writeCharacteristic = characteristics.find(char => {
-        const uuid = char.uuid.toLowerCase().replace(/-/g, '');
-        return uuid.includes('ffe1') || uuid === 'ffe1';
-      });
-    }
-
-    // Try any writable characteristic
-    if (!writeCharacteristic) {
-      writeCharacteristic = characteristics.find(char =>
-        char.isWritableWithResponse || char.isWritableWithoutResponse
-      );
-    }
+    // Find FFE1 characteristic (confirmed from LightBlue)
+    const writeCharacteristic = characteristics.find(char => {
+      const uuid = char.uuid.toLowerCase().replace(/-/g, '');
+      return uuid === 'ffe1' || uuid.includes('ffe1');
+    });
 
     return writeCharacteristic;
+  }
+
+  // Command queuing system for reliable SP105E communication
+  private async sendCommandToDevice(deviceId: string, command: Uint8Array): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Add command to queue
+      if (!this.commandQueue.has(deviceId)) {
+        this.commandQueue.set(deviceId, []);
+      }
+
+      const commandPromise = async () => {
+        try {
+          const characteristic = this.connectedCharacteristics.get(deviceId);
+          if (!characteristic) {
+            throw new Error('Device characteristic not available');
+          }
+
+          console.log(`📡 Sending command to ${deviceId}: ${Array.from(command).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+
+          // Try writeWithoutResponse first (preferred for SP105E)
+          if (characteristic.isWritableWithoutResponse) {
+            await characteristic.writeWithoutResponse(uint8ArrayToBase64(command));
+            console.log(`✅ Command sent via writeWithoutResponse`);
+          } else if (characteristic.isWritableWithResponse) {
+            await characteristic.writeWithResponse(uint8ArrayToBase64(command));
+            console.log(`✅ Command sent via writeWithResponse`);
+          } else {
+            throw new Error('Characteristic not writable');
+          }
+
+          resolve();
+        } catch (error) {
+          console.error(`❌ Failed to send command:`, error);
+          reject(error);
+        }
+      };
+
+      this.commandQueue.get(deviceId)!.push(commandPromise);
+      this.processCommandQueue(deviceId);
+    });
+  }
+
+  // Process command queue to prevent command conflicts
+  private async processCommandQueue(deviceId: string): Promise<void> {
+    if (this.isProcessingCommands.get(deviceId)) {
+      return; // Already processing
+    }
+
+    this.isProcessingCommands.set(deviceId, true);
+
+    const queue = this.commandQueue.get(deviceId) || [];
+    while (queue.length > 0) {
+      const commandPromise = queue.shift();
+      if (commandPromise) {
+        try {
+          await commandPromise();
+          await delay(50); // Small delay between commands
+        } catch (error) {
+          console.error('Command failed:', error);
+        }
+      }
+    }
+
+    this.isProcessingCommands.set(deviceId, false);
   }
 }
 

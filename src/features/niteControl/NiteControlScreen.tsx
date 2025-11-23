@@ -158,15 +158,27 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
     console.log = (...args) => {
       originalConsoleLog(...args);
       const message = args.join(' ');
-      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE') || message.includes('color') || message.includes('brightness')) {
-        addDebugLog(message, 'info');
+      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE') ||
+          message.includes('📡') || message.includes('✅') || message.includes('📤') ||
+          message.includes('color') || message.includes('brightness') || message.includes('command')) {
+
+        // Determine type based on emojis and keywords
+        let type: 'info' | 'success' | 'error' = 'info';
+        if (message.includes('✅') || message.includes('sent successfully')) {
+          type = 'success';
+        } else if (message.includes('❌') || message.includes('failed')) {
+          type = 'error';
+        }
+
+        addDebugLog(message, type);
       }
     };
 
     console.error = (...args) => {
       originalConsoleError(...args);
       const message = args.join(' ');
-      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE')) {
+      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE') ||
+          message.includes('❌') || message.includes('command') || message.includes('characteristic')) {
         addDebugLog(message, 'error');
       }
     };
@@ -802,6 +814,44 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
                 style={styles.debugTestButton}
               >
                 <Text style={styles.debugActionText}>Test BLE</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.debugActions, { marginTop: 4 }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected devices to test', 'error');
+                    return;
+                  }
+                  addDebugLog('🧪 Testing LED with rainbow colors...');
+                  const colors = ['#FF0000', '#00FF00', '#0000FF'];
+                  let colorIndex = 0;
+                  const testInterval = setInterval(() => {
+                    if (colorIndex < colors.length) {
+                      addDebugLog(`🎨 Test color ${colorIndex + 1}: ${colors[colorIndex]}`);
+                      handleColorSelect(colors[colorIndex]);
+                      colorIndex++;
+                    } else {
+                      clearInterval(testInterval);
+                      addDebugLog('🧪 LED test complete', 'success');
+                    }
+                  }, 1000);
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Test LED</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  addDebugLog('📊 Connection Status:');
+                  connectedCups.forEach(cup => {
+                    addDebugLog(`  - ${cup.name}: ${cup.isConnected ? 'Connected' : 'Disconnected'}`);
+                  });
+                  addDebugLog(`📱 Selected: ${selectedConnectedCups.length}/${connectedCups.length}`);
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Status</Text>
               </TouchableOpacity>
             </View>
           </View>
