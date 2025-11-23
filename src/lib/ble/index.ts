@@ -53,28 +53,39 @@ const SP105E_CHARACTERISTIC_MAIN = 'FFE1'; // CORRECTED: SP105E actually uses FF
 const SP105E_CHARACTERISTIC_INIT = 'FFF2'; // Secondary characteristic for initialization
 const SP105E_DEVICE_NAMES = ['SP105E', 'Magic-LED', 'BLE-LED', 'LED-BLE'];
 
-// ACTUAL SP105E Protocol (4-byte commands to FFE0/FFE1)
-// Based on reverse engineering - commands are 4 bytes total
+// ACTUAL SP105E Protocol (8-byte commands to FFE0/FFE1)
+// Based on LightBlue analysis: Current value = 01CB 0204 0400 0258 (8 bytes)
+// Format: [HEADER1, HEADER2, CMD, DATA1, DATA2, DATA3, CHECKSUM1, CHECKSUM2]
 const SP105E_PROTOCOL = {
   // Power control commands
-  POWER_ON: new Uint8Array([0x01, 0x00, 0x00, 0x01]),
-  POWER_OFF: new Uint8Array([0x00, 0x00, 0x00, 0x02]),
+  POWER_ON: new Uint8Array([0x01, 0xCB, 0x01, 0xFF, 0xFF, 0xFF, 0x02, 0x66]),
+  POWER_OFF: new Uint8Array([0x01, 0xCB, 0x02, 0x00, 0x00, 0x00, 0x02, 0x68]),
 
-  // RGB Color command: [R, G, B, 0x3C]
-  SET_COLOR: (r: number, g: number, b: number) =>
-    new Uint8Array([r, g, b, 0x3C]),
+  // RGB Color command: [0x01, 0xCB, 0x03, R, G, B, 0x02, CHECKSUM]
+  SET_COLOR: (r: number, g: number, b: number) => {
+    const checksum = (0x01 + 0xCB + 0x03 + r + g + b + 0x02) & 0xFF;
+    return new Uint8Array([0x01, 0xCB, 0x03, r, g, b, 0x02, checksum]);
+  },
 
-  // Brightness command: [brightness, 0x00, 0x00, 0x2A] (brightness 0-100)
-  SET_BRIGHTNESS: (brightness: number) =>
-    new Uint8Array([brightness, 0x00, 0x00, 0x2A]),
+  // Brightness command: [0x01, 0xCB, 0x04, brightness, 0x00, 0x00, 0x02, CHECKSUM]
+  SET_BRIGHTNESS: (brightness: number) => {
+    const checksum = (0x01 + 0xCB + 0x04 + brightness + 0x00 + 0x00 + 0x02) & 0xFF;
+    return new Uint8Array([0x01, 0xCB, 0x04, brightness, 0x00, 0x00, 0x02, checksum]);
+  },
 
-  // Effect/Pattern command: [pattern, speed, 0x00, 0x2C]
-  SET_PATTERN: (pattern: number, speed: number = 50) =>
-    new Uint8Array([pattern, speed, 0x00, 0x2C]),
+  // Effect/Pattern command: [0x01, 0xCB, 0x05, pattern, speed, 0x00, 0x02, CHECKSUM]
+  SET_PATTERN: (pattern: number, speed: number = 50) => {
+    const checksum = (0x01 + 0xCB + 0x05 + pattern + speed + 0x00 + 0x02) & 0xFF;
+    return new Uint8Array([0x01, 0xCB, 0x05, pattern, speed, 0x00, 0x02, checksum]);
+  },
 
-  // Pixel count setting: [count_low, count_high, 0x00, 0x2D]
-  SET_PIXEL_COUNT: (count: number) =>
-    new Uint8Array([count & 0xFF, (count >> 8) & 0xFF, 0x00, 0x2D]),
+  // Pixel count setting: [0x01, 0xCB, 0x06, count_low, count_high, 0x00, 0x02, CHECKSUM]
+  SET_PIXEL_COUNT: (count: number) => {
+    const countLow = count & 0xFF;
+    const countHigh = (count >> 8) & 0xFF;
+    const checksum = (0x01 + 0xCB + 0x06 + countLow + countHigh + 0x00 + 0x02) & 0xFF;
+    return new Uint8Array([0x01, 0xCB, 0x06, countLow, countHigh, 0x00, 0x02, checksum]);
+  },
 };
 
 // Use the actual SP105E protocol
@@ -528,13 +539,14 @@ class BLEService {
       console.log(`✅ Write characteristic found: ${writeCharacteristic.uuid}`);
       console.log(`📝 Characteristic capabilities: writeWithResponse=${writeCharacteristic.isWritableWithResponse}, writeWithoutResponse=${writeCharacteristic.isWritableWithoutResponse}`);
 
-      // Send SP105E color command (4-byte protocol)
-      console.log(`\n🎨 SENDING SP105E COLOR COMMAND`);
+      // Send SP105E color command (8-byte protocol based on LightBlue analysis)
+      console.log(`\n🎨 SENDING SP105E 8-BYTE COLOR COMMAND`);
       const colorCommand = SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
 
       console.log(`🎨 Color RGB: ${command.red}, ${command.green}, ${command.blue}`);
-      console.log(`📤 SP105E command bytes:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: [${command.red.toString(16).padStart(2, '0').toUpperCase()}, ${command.green.toString(16).padStart(2, '0').toUpperCase()}, ${command.blue.toString(16).padStart(2, '0').toUpperCase()}, 3C]`);
+      console.log(`📤 SP105E 8-byte command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=03, R=${command.red.toString(16).padStart(2, '0').toUpperCase()}, G=${command.green.toString(16).padStart(2, '0').toUpperCase()}, B=${command.blue.toString(16).padStart(2, '0').toUpperCase()}, CHK1=02, CHK2=CALC]`);
+      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
 
       // Send the color command to SP105E
       if (writeCharacteristic.isWritableWithoutResponse) {
@@ -637,13 +649,14 @@ class BLEService {
           patternNumber = 1;
       }
 
-      // Send SP105E pattern command (4-byte protocol)
-      console.log(`\n🎭 SENDING SP105E PATTERN COMMAND`);
-      const patternCommand = SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed * 10);
+      // Send SP105E pattern command (8-byte protocol based on LightBlue analysis)
+      console.log(`\n🎭 SENDING SP105E 8-BYTE PATTERN COMMAND`);
+      const patternCommand = SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed);
 
       console.log(`🎭 Mode: ${command.mode} -> Pattern: ${patternNumber}, Speed: ${speed}`);
-      console.log(`📤 SP105E command bytes:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: [${patternNumber.toString(16).padStart(2, '0').toUpperCase()}, ${(speed * 10).toString(16).padStart(2, '0').toUpperCase()}, 00, 2C]`);
+      console.log(`📤 SP105E 8-byte command:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=05, PATTERN=${patternNumber.toString(16).padStart(2, '0').toUpperCase()}, SPEED=${speed.toString(16).padStart(2, '0').toUpperCase()}, 00, CHK1=02, CHK2=CALC]`);
+      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
 
       // Send the pattern command to SP105E
       if (writeCharacteristic.isWritableWithoutResponse) {
@@ -717,14 +730,15 @@ class BLEService {
         throw new Error('SP105E control characteristic not found');
       }
 
-      // Send SP105E brightness command (4-byte protocol)
-      console.log(`\n🔆 SENDING SP105E BRIGHTNESS COMMAND`);
+      // Send SP105E brightness command (8-byte protocol based on LightBlue analysis)
+      console.log(`\n🔆 SENDING SP105E 8-BYTE BRIGHTNESS COMMAND`);
 
       const brightnessCommand = SP105E_PROTOCOL.SET_BRIGHTNESS(command.brightness);
 
       console.log(`💡 Brightness: ${command.brightness}%`);
-      console.log(`📤 SP105E command bytes:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: [${command.brightness.toString(16).padStart(2, '0').toUpperCase()}, 00, 00, 2A]`);
+      console.log(`📤 SP105E 8-byte command:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Format: [HEADER1=01, HEADER2=CB, CMD=04, BRIGHTNESS=${command.brightness.toString(16).padStart(2, '0').toUpperCase()}, 00, 00, CHK1=02, CHK2=CALC]`);
+      console.log(`🔍 LightBlue reference: Current value = 01CB 0204 0400 0258 (8 bytes)`);
 
       // Send the brightness command to SP105E
       if (writeCharacteristic.isWritableWithoutResponse) {
