@@ -75,6 +75,7 @@ interface NiteControlActions {
   deleteScene: (sceneId: string) => void;
   applyScene: (sceneId: string) => Promise<void>;
   clearError: () => void;
+  clearStoredData: () => void;
 }
 
 type NiteControlStore = NiteControlState & NiteControlActions;
@@ -82,8 +83,16 @@ type NiteControlStore = NiteControlState & NiteControlActions;
 // Start with empty cups array - devices will be added via real BLE scanning
 const initialCups: Cup[] = [];
 
-// Initialize BLE service
+// Initialize BLE service and clear any old data on startup
 bleService.initialize().catch(console.error);
+
+// Clear any stored mock data on app startup to ensure clean state
+// This fixes the issue where old mock data persists across builds
+setTimeout(() => {
+  const store = useNiteControlStore.getState();
+  store.clearStoredData();
+  console.log('🔄 Cleared legacy cup data on startup');
+}, 100);
 
 export const useNiteControlStore = create<NiteControlStore>()(
   persist(
@@ -169,7 +178,7 @@ export const useNiteControlStore = create<NiteControlStore>()(
                 id: device.id,
                 name: device.name,
                 isConnected: false,
-                batteryLevel: 80, // Default battery level
+                batteryLevel: 0, // Battery level will be updated after connection
                 color: '#00FF88',
                 mode: 'static' as CupMode,
                 brightness: 80,
@@ -207,9 +216,18 @@ export const useNiteControlStore = create<NiteControlStore>()(
           console.log(`Connecting to BLE device: ${cupId}`);
           await bleService.connectToDevice(cupId);
 
+          // Get real battery level after connection
+          let batteryLevel = 0;
+          try {
+            batteryLevel = await bleService.getBatteryLevel(cupId);
+            console.log(`Battery level for ${cupId}: ${batteryLevel}%`);
+          } catch (error) {
+            console.log(`Could not get battery level for ${cupId}, using 0%`);
+          }
+
           set(state => ({
             cups: state.cups.map(cup =>
-              cup.id === cupId ? { ...cup, isConnected: true } : cup
+              cup.id === cupId ? { ...cup, isConnected: true, batteryLevel } : cup
             ),
             isConnecting: false,
             error: null,
@@ -230,16 +248,18 @@ export const useNiteControlStore = create<NiteControlStore>()(
 
       disconnectFromCup: async (cupId: string) => {
         try {
-          // Mock BLE disconnection - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          console.log(`Disconnecting from BLE device: ${cupId}`);
+          await bleService.disconnectFromDevice(cupId);
+
           set(state => ({
             cups: state.cups.map(cup =>
-              cup.id === cupId ? { ...cup, isConnected: false } : cup
+              cup.id === cupId ? { ...cup, isConnected: false, batteryLevel: 0 } : cup
             ),
             selectedCups: state.selectedCups.filter(id => id !== cupId),
           }));
+          console.log(`✅ Successfully disconnected from ${cupId}`);
         } catch (error) {
+          console.error(`❌ Failed to disconnect from ${cupId}:`, error);
           set({ error: 'Failed to disconnect from cup' });
         }
       },
@@ -606,6 +626,16 @@ export const useNiteControlStore = create<NiteControlStore>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      clearStoredData: () => {
+        console.log('🗑️ Clearing all stored cup data and resetting to clean state');
+        set({
+          cups: [], // Clear all cups including any mock data
+          selectedCups: [],
+          currentScene: null,
+          error: null,
+        });
       },
     }),
     {

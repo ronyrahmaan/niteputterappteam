@@ -97,36 +97,26 @@ class BLEService {
     if (BleManager) {
       this.bleManager = new BleManager();
     } else {
-      console.log('BLE Manager not available - running in mock mode');
+      throw new Error('BLE Manager not available - react-native-ble-plx is required. Please run on a development build.');
     }
   }
 
   async initialize(): Promise<void> {
     try {
-      if (!this.bleManager) {
-        console.log('BLE Manager not available - using mock mode for development');
-        return;
-      }
-
       const state = await this.bleManager.state();
       console.log('BLE Manager initialized, state:', state);
 
       if (state !== 'PoweredOn') {
-        console.warn('Bluetooth is not powered on');
+        throw new Error('Bluetooth is not powered on. Please enable Bluetooth and try again.');
       }
     } catch (error) {
       console.error('Failed to initialize BLE Manager:', error);
-      throw new Error('Failed to initialize Bluetooth');
+      throw new Error(`Failed to initialize Bluetooth: ${error.message}`);
     }
   }
 
   async requestPermissions(): Promise<boolean> {
     try {
-      if (!this.bleManager) {
-        console.log('Permissions check skipped - using mock mode');
-        return true;
-      }
-
       if (Platform.OS === 'android' && PermissionsAndroid) {
         const granted = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
@@ -155,11 +145,6 @@ class BLEService {
 
   async isBluetoothEnabled(): Promise<boolean> {
     try {
-      if (!this.bleManager) {
-        console.log('Bluetooth state check skipped - using mock mode');
-        return true;
-      }
-
       const state = await this.bleManager.state();
       return state === 'PoweredOn';
     } catch (error) {
@@ -177,39 +162,32 @@ class BLEService {
     this.discoveredDevices.clear();
 
     try {
-      // Only scan for real BLE devices
-
-      // Only start real BLE scan if manager is available
-      if (this.bleManager) {
-        console.log('Starting real Bluetooth device scan...');
-        this.bleManager.startDeviceScan(
-          null, // Scan for all devices (not just specific service UUID)
-          { allowDuplicates: false },
-          (error, device) => {
-            if (error) {
-              console.error('BLE scan error:', error);
-              return;
-            }
-
-            if (device) {
-              console.log(`Found device: ${device.name || device.localName || 'Unknown'} (${device.id})`);
-
-              // Add all devices for debugging, filter later
-              const bleDevice: BLEDevice = {
-                id: device.id,
-                name: device.name || device.localName || 'Unknown Device',
-                rssi: device.rssi || -100,
-                isConnectable: device.isConnectable !== false,
-              };
-
-              this.discoveredDevices.set(device.id, bleDevice);
-              this.notifyScanListeners(Array.from(this.discoveredDevices.values()));
-            }
+      console.log('Starting real Bluetooth device scan...');
+      this.bleManager.startDeviceScan(
+        null, // Scan for all devices (not just specific service UUID)
+        { allowDuplicates: false },
+        (error, device) => {
+          if (error) {
+            console.error('BLE scan error:', error);
+            return;
           }
-        );
-      } else {
-        console.log('BLE scanning not available - no devices can be discovered');
-      }
+
+          if (device) {
+            console.log(`Found device: ${device.name || device.localName || 'Unknown'} (${device.id})`);
+
+            // Add all devices for debugging, filter later
+            const bleDevice: BLEDevice = {
+              id: device.id,
+              name: device.name || device.localName || 'Unknown Device',
+              rssi: device.rssi || -100,
+              isConnectable: device.isConnectable !== false,
+            };
+
+            this.discoveredDevices.set(device.id, bleDevice);
+            this.notifyScanListeners(Array.from(this.discoveredDevices.values()));
+          }
+        }
+      );
 
       // Stop scan after 10 seconds
       setTimeout(() => {
@@ -232,9 +210,7 @@ class BLEService {
   async stopScan(): Promise<void> {
     this.isScanning = false;
     try {
-      if (this.bleManager) {
-        this.bleManager.stopDeviceScan();
-      }
+      this.bleManager.stopDeviceScan();
     } catch (error) {
       console.error('Error stopping scan:', error);
     }
@@ -362,7 +338,7 @@ class BLEService {
       const connectionState: BLEConnectionState = {
         deviceId,
         isConnected: true,
-        batteryLevel: 100, // SP105E doesn't report battery
+        batteryLevel: undefined, // SP105E doesn't report battery - will be handled by store
         firmwareVersion: 'SP105E',
       };
 
