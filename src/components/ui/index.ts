@@ -7,4 +7,5 @@ export { StarsBackground } from './StarsBackground';
 export { SkyBackground } from './SkyBackground';
 export { NitePutterLogo } from './NitePutterLogo';
 export { GolfNeonBackground } from './GolfNeonBackground';
+export { DevBuildModal } from './DevBuildModal';
 export * from './Typography';

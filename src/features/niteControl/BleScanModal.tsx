@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { bleService, BLEDevice } from '../../lib/ble';
 import { theme } from '../../lib/theme';
 import { useNiteControlStore } from '../../store/niteControlStore';
+import { DevBuildModal } from '../../components/ui/DevBuildModal';
 
 interface BleScanModalProps {
   visible: boolean;
@@ -16,6 +17,7 @@ export const BleScanModal: React.FC<BleScanModalProps> = ({ visible, onClose }) 
   const [devices, setDevices] = useState<BLEDevice[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [showDevBuildModal, setShowDevBuildModal] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -68,10 +70,18 @@ export const BleScanModal: React.FC<BleScanModalProps> = ({ visible, onClose }) 
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.headerRow}>
-            <Text style={styles.title}>Scan for Cups (Bluetooth)</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={18} color={theme.colors.text.secondary} />
-            </TouchableOpacity>
+            <Text style={styles.title}>Scan for LED Controllers</Text>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.infoButton}
+                onPress={() => setShowDevBuildModal(true)}
+              >
+                <Ionicons name="information-circle" size={18} color={theme.colors.neon.blue} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={18} color={theme.colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {scanning && (
@@ -85,12 +95,31 @@ export const BleScanModal: React.FC<BleScanModalProps> = ({ visible, onClose }) 
             data={devices}
             keyExtractor={(item) => item.id}
             ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            renderItem={({ item }) => (
-              <View style={styles.deviceRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.deviceName}>{item.name}</Text>
-                  <Text style={styles.deviceMeta}>RSSI {item.rssi} • {item.isConnectable ? 'Connectable' : 'Unavailable'}</Text>
-                </View>
+            renderItem={({ item }) => {
+              const isLEDRing = item.name.toLowerCase().includes('sp105e') ||
+                               item.name.toLowerCase().includes('magic') ||
+                               item.name.toLowerCase().includes('led');
+
+              return (
+                <View style={styles.deviceRow}>
+                  <View style={styles.deviceIconContainer}>
+                    <Ionicons
+                      name={isLEDRing ? "radio-button-on" : "golf"}
+                      size={24}
+                      color={isLEDRing ? "#FF6B6B" : "#00FF88"}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.deviceHeader}>
+                      <Text style={styles.deviceName}>{item.name}</Text>
+                      {isLEDRing && (
+                        <View style={styles.deviceTypeTag}>
+                          <Text style={styles.deviceTypeText}>LED Ring</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.deviceMeta}>RSSI {item.rssi} • {item.isConnectable ? 'Connectable' : 'Unavailable'}</Text>
+                  </View>
                 <TouchableOpacity
                   style={[styles.connectBtn, !item.isConnectable && styles.disabled]}
                   disabled={!item.isConnectable || connectingId === item.id}
@@ -102,16 +131,23 @@ export const BleScanModal: React.FC<BleScanModalProps> = ({ visible, onClose }) 
                     <Text style={styles.connectText}>Connect</Text>
                   )}
                 </TouchableOpacity>
-              </View>
-            )}
+                </View>
+              );
+            }}
             ListEmptyComponent={() => (
               <View style={{ paddingVertical: 12 }}>
-                <Text style={styles.emptyText}>No devices yet — keep Bluetooth on and cup powered.</Text>
+                <Text style={styles.emptyText}>No devices yet — keep Bluetooth on and LED controllers powered.</Text>
               </View>
             )}
           />
         </View>
       </View>
+
+      {/* Dev Build Info Modal */}
+      <DevBuildModal
+        visible={showDevBuildModal}
+        onClose={() => setShowDevBuildModal(false)}
+      />
     </Modal>
   );
 };
@@ -142,6 +178,14 @@ const styles = {
     color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.semibold,
   },
+  headerButtons: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing[3],
+  },
+  infoButton: {
+    padding: 4,
+  },
   scanningRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -156,6 +200,26 @@ const styles = {
     alignItems: 'center' as const,
     gap: theme.spacing[2],
     paddingVertical: theme.spacing[2],
+  },
+  deviceIconContainer: {
+    width: 40,
+    alignItems: 'center' as const,
+  },
+  deviceHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing[2],
+  },
+  deviceTypeTag: {
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: theme.spacing[1],
+    paddingVertical: 2,
+  },
+  deviceTypeText: {
+    color: '#FF6B6B',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   deviceName: {
     color: theme.colors.text.primary,

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { maybePlayConfirm, play } from '../lib/sound';
+import { bleService, BLEDevice, hexToRgb } from '../lib/ble';
 
 export interface Cup {
   id: string;
@@ -109,6 +110,9 @@ const mockCups: Cup[] = [
   },
 ];
 
+// Initialize BLE service
+bleService.initialize().catch(console.error);
+
 export const useNiteControlStore = create<NiteControlStore>()(
   persist(
     (set, get) => ({
@@ -179,16 +183,44 @@ export const useNiteControlStore = create<NiteControlStore>()(
       // Actions
       scanForCups: async () => {
         set({ isScanning: true, error: null });
-        
+
         try {
-          // Mock BLE scan - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          set({
-            isScanning: false,
-            error: null,
+          console.log('Starting real BLE scan for devices...');
+
+          // Set up scan listener to auto-add discovered devices as cups
+          const unsubscribe = bleService.onScanResult((devices: BLEDevice[]) => {
+            const { addCup } = get();
+
+            devices.forEach(device => {
+              // Add each discovered device as a cup
+              addCup({
+                id: device.id,
+                name: device.name,
+                isConnected: false,
+                batteryLevel: 80, // Default battery level
+                color: '#00FF88',
+                mode: 'static' as CupMode,
+                brightness: 80,
+              });
+            });
           });
+
+          await bleService.requestPermissions();
+          await bleService.startScan();
+
+          // Stop scanning after 10 seconds
+          setTimeout(() => {
+            bleService.stopScan();
+            unsubscribe();
+            set({
+              isScanning: false,
+              error: null,
+            });
+            console.log('BLE scan completed');
+          }, 10000);
+
         } catch (error) {
+          console.error('BLE scan failed:', error);
           set({
             isScanning: false,
             error: 'Failed to scan for cups',
@@ -198,11 +230,11 @@ export const useNiteControlStore = create<NiteControlStore>()(
 
       connectToCup: async (cupId: string) => {
         set({ isConnecting: true, error: null });
-        
+
         try {
-          // Mock BLE connection - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
+          console.log(`Connecting to BLE device: ${cupId}`);
+          await bleService.connectToDevice(cupId);
+
           set(state => ({
             cups: state.cups.map(cup =>
               cup.id === cupId ? { ...cup, isConnected: true } : cup
@@ -212,7 +244,9 @@ export const useNiteControlStore = create<NiteControlStore>()(
           }));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           play('connect');
+          console.log(`✅ Successfully connected to ${cupId}`);
         } catch (error) {
+          console.error(`❌ Failed to connect to ${cupId}:`, error);
           set({
             isConnecting: false,
             error: 'Failed to connect to cup',
@@ -322,13 +356,34 @@ export const useNiteControlStore = create<NiteControlStore>()(
       },
 
       setColor: async (color: string) => {
-        const { selectedCups } = get();
+        const { selectedCups, cups } = get();
         set({ currentColor: color });
-        
+
         try {
-          // Mock BLE color update - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
+          // Get connected cups that are selected
+          const selectedConnectedCups = cups.filter(cup =>
+            selectedCups.includes(cup.id) && cup.isConnected
+          );
+
+          if (selectedConnectedCups.length === 0) {
+            console.log('No connected cups selected for color change');
+            return;
+          }
+
+          // Send real BLE color commands to each selected connected cup
+          const colorCommand = hexToRgb(color);
+          console.log(`Setting color ${color} for ${selectedConnectedCups.length} cups:`, colorCommand);
+
+          for (const cup of selectedConnectedCups) {
+            try {
+              await bleService.sendColorCommand(cup.id, colorCommand);
+              console.log(`✅ Color command sent to ${cup.name} (${cup.id})`);
+            } catch (error) {
+              console.error(`❌ Failed to send color to ${cup.name}:`, error);
+            }
+          }
+
+          // Update cup colors in state
           set(state => ({
             cups: state.cups.map(cup =>
               selectedCups.includes(cup.id) ? { ...cup, color } : cup
@@ -336,6 +391,7 @@ export const useNiteControlStore = create<NiteControlStore>()(
           }));
           maybePlayConfirm();
         } catch (error) {
+          console.error('Failed to set color:', error);
           set({ error: 'Failed to set color' });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           play('error');
@@ -344,9 +400,30 @@ export const useNiteControlStore = create<NiteControlStore>()(
 
       setCupColor: async (cupId: string, color: string) => {
         try {
-          // Mock BLE color update for specific cup - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
+          const { cups } = get();
+          const cup = cups.find(c => c.id === cupId);
+
+          if (!cup) {
+            throw new Error('Cup not found');
+          }
+
+          if (!cup.isConnected) {
+            console.log(`Cup ${cup.name} is not connected, skipping BLE command`);
+            set(state => ({
+              cups: state.cups.map(cup =>
+                cup.id === cupId ? { ...cup, color } : cup
+              ),
+            }));
+            return;
+          }
+
+          // Send real BLE color command to specific cup
+          const colorCommand = hexToRgb(color);
+          console.log(`Setting color ${color} for ${cup.name}:`, colorCommand);
+
+          await bleService.sendColorCommand(cupId, colorCommand);
+          console.log(`✅ Color command sent to ${cup.name} (${cupId})`);
+
           set(state => ({
             cups: state.cups.map(cup =>
               cup.id === cupId ? { ...cup, color } : cup
@@ -354,6 +431,7 @@ export const useNiteControlStore = create<NiteControlStore>()(
           }));
           maybePlayConfirm();
         } catch (error) {
+          console.error(`❌ Failed to set cup color:`, error);
           set({ error: 'Failed to set cup color' });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           play('error');
@@ -361,31 +439,70 @@ export const useNiteControlStore = create<NiteControlStore>()(
       },
 
       setMode: async (mode: CupMode) => {
-        const { selectedCups } = get();
+        const { selectedCups, cups } = get();
         set({ currentMode: mode });
-        
+
         try {
-          // Mock BLE mode update - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 300));
-          
+          // Get connected cups that are selected
+          const selectedConnectedCups = cups.filter(cup =>
+            selectedCups.includes(cup.id) && cup.isConnected
+          );
+
+          if (selectedConnectedCups.length === 0) {
+            console.log('No connected cups selected for mode change');
+            return;
+          }
+
+          // Send real BLE mode commands to each selected connected cup
+          console.log(`Setting mode ${mode} for ${selectedConnectedCups.length} cups`);
+
+          for (const cup of selectedConnectedCups) {
+            try {
+              await bleService.sendModeCommand(cup.id, { mode });
+              console.log(`✅ Mode command sent to ${cup.name} (${cup.id})`);
+            } catch (error) {
+              console.error(`❌ Failed to send mode to ${cup.name}:`, error);
+            }
+          }
+
           set(state => ({
             cups: state.cups.map(cup =>
               selectedCups.includes(cup.id) ? { ...cup, mode } : cup
             ),
           }));
         } catch (error) {
+          console.error('Failed to set mode:', error);
           set({ error: 'Failed to set mode' });
         }
       },
 
       setBrightness: async (brightness: number) => {
-        const { selectedCups } = get();
+        const { selectedCups, cups } = get();
         set({ currentBrightness: brightness });
-        
+
         try {
-          // Mock BLE brightness update - replace with real BLE later
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
+          // Get connected cups that are selected
+          const selectedConnectedCups = cups.filter(cup =>
+            selectedCups.includes(cup.id) && cup.isConnected
+          );
+
+          if (selectedConnectedCups.length === 0) {
+            console.log('No connected cups selected for brightness change');
+            return;
+          }
+
+          // Send real BLE brightness commands to each selected connected cup
+          console.log(`Setting brightness ${brightness} for ${selectedConnectedCups.length} cups`);
+
+          for (const cup of selectedConnectedCups) {
+            try {
+              await bleService.sendBrightnessCommand(cup.id, { brightness });
+              console.log(`✅ Brightness command sent to ${cup.name} (${cup.id})`);
+            } catch (error) {
+              console.error(`❌ Failed to send brightness to ${cup.name}:`, error);
+            }
+          }
+
           set(state => ({
             cups: state.cups.map(cup =>
               selectedCups.includes(cup.id) ? { ...cup, brightness } : cup
@@ -393,6 +510,7 @@ export const useNiteControlStore = create<NiteControlStore>()(
           }));
           maybePlayConfirm();
         } catch (error) {
+          console.error('Failed to set brightness:', error);
           set({ error: 'Failed to set brightness' });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           play('error');

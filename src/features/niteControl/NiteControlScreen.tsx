@@ -370,6 +370,23 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
                   {connectedCups.length > 0 && (
                     <Text style={styles.batteryLevel}>Avg Battery: {avgBattery}%</Text>
                   )}
+                  {connectedCups.length > 0 && (
+                    <View style={styles.connectedDevices}>
+                      {connectedCups.slice(0, 3).map(cup => (
+                        <View key={cup.id} style={styles.deviceChip}>
+                          <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
+                          <Text style={styles.deviceName} numberOfLines={1}>
+                            {cup.name}
+                          </Text>
+                        </View>
+                      ))}
+                      {connectedCups.length > 3 && (
+                        <Text style={styles.moreDevicesText}>
+                          +{connectedCups.length - 3} more
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -614,7 +631,9 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
                             ]}
                           >
                             <Ionicons
-                              name="golf"
+                              name={cup?.name?.toLowerCase().includes('sp105e') ||
+                                   cup?.name?.toLowerCase().includes('magic') ||
+                                   cup?.name?.toLowerCase().includes('led') ? "radio-button-on" : "golf"}
                               size={14}
                               color="rgba(255, 255, 255, 0.9)"
                               style={styles.cupIcon}
@@ -817,6 +836,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  connectedDevices: {
+    marginTop: 8,
+    gap: 6,
+  },
+  deviceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(52, 199, 89, 0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+    maxWidth: '100%',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  deviceName: {
+    fontSize: 12,
+    color: '#34C759',
+    fontWeight: '500',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    flex: 1,
+  },
+  moreDevicesText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    fontStyle: 'italic',
   },
   quickActionsRow: {
     flexDirection: 'row',
