@@ -271,26 +271,35 @@ class BLEService {
       const services = await deviceWithServices.services();
       console.log('Available services:', services.map(s => `${s.uuid} (${s.deviceID})`));
 
-      // Find SP105E service using correct FFF0 UUID
-      const sp105eService = services.find(service => {
+      // Find SP105E service - try ALL possible service UUIDs for SP105E/Magic-LED
+      let sp105eService = services.find(service => {
         const uuid = service.uuid.toLowerCase().replace(/-/g, '');
         return uuid === 'fff0' ||
                uuid.includes('fff0') ||
-               service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase() ||
+               uuid === 'ffe0' ||
+               uuid.includes('ffe0') ||
                service.uuid.toLowerCase() === 'fff0' ||
-               service.uuid.toUpperCase() === 'FFF0';
+               service.uuid.toLowerCase() === 'ffe0';
       });
 
-      if (!sp105eService) {
-        console.error(`Device does not support SP105E protocol. Available services: ${services.map(s => s.uuid).join(', ')}`);
-        console.log('Attempting connection anyway for debugging...');
+      // If no specific service found, try any service for debugging
+      if (!sp105eService && services.length > 0) {
+        console.log(`🔍 No FFF0/FFE0 service found, trying first available service for debugging...`);
+        console.log(`📋 Available services: ${services.map(s => s.uuid).join(', ')}`);
+        sp105eService = services[0]; // Use first available service
+        console.log(`🔧 Using service: ${sp105eService.uuid} for SP105E commands`);
+      }
 
-        // Try to connect anyway - maybe the device doesn't advertise services properly
+      if (!sp105eService) {
+        console.error(`❌ CRITICAL: No services found on device!`);
+        console.error(`📋 Available services: ${services.map(s => s.uuid).join(', ')}`);
+
+        // Still create connection for debugging
         const connectionState: BLEConnectionState = {
           deviceId,
           isConnected: true,
           batteryLevel: 100,
-          firmwareVersion: 'Unknown',
+          firmwareVersion: 'No-Service-Debug',
         };
         this.connectedDevices.set(deviceId, connectionState);
         this.notifyConnectionListeners(connectionState);
@@ -301,28 +310,43 @@ class BLEService {
       const characteristics = await sp105eService.characteristics();
       console.log('Available characteristics:', characteristics.map(c => `${c.uuid} (isWritableWithResponse: ${c.isWritableWithResponse}, isWritableWithoutResponse: ${c.isWritableWithoutResponse})`));
 
-      // Find the FFF3 write characteristic for SP105E
+      // Find the write characteristic for SP105E - try ALL possible characteristics
       let writeCharacteristic = characteristics.find(char =>
         char.uuid.toLowerCase() === SP105E_CHARACTERISTIC_MAIN.toLowerCase()
       );
 
-      // If not found by exact match, try partial matches for FFF3
+      // Try FFF3 variations
       if (!writeCharacteristic) {
-        console.log('Exact UUID match failed, trying partial matches for FFF3...');
+        console.log('🔍 Exact FFF3 match failed, trying FFF3 variations...');
         writeCharacteristic = characteristics.find(char => {
           const uuid = char.uuid.toLowerCase().replace(/-/g, '');
           return uuid.includes('fff3') || uuid === 'fff3';
         });
+        if (writeCharacteristic) {
+          console.log(`✅ Found FFF3 characteristic: ${writeCharacteristic.uuid}`);
+        }
       }
 
-      // If still not found, try any writable characteristic
+      // Try FFE1 for older SP105E variants
       if (!writeCharacteristic) {
-        console.log('No FFE1 characteristic found, looking for any writable characteristic...');
+        console.log('🔍 No FFF3 found, trying FFE1 for older SP105E variants...');
+        writeCharacteristic = characteristics.find(char => {
+          const uuid = char.uuid.toLowerCase().replace(/-/g, '');
+          return uuid.includes('ffe1') || uuid === 'ffe1';
+        });
+        if (writeCharacteristic) {
+          console.log(`✅ Found FFE1 characteristic: ${writeCharacteristic.uuid}`);
+        }
+      }
+
+      // Try any writable characteristic
+      if (!writeCharacteristic) {
+        console.log('🔍 No specific characteristics found, trying ANY writable characteristic...');
         writeCharacteristic = characteristics.find(char =>
           char.isWritableWithResponse || char.isWritableWithoutResponse
         );
         if (writeCharacteristic) {
-          console.log(`Using alternative writable characteristic: ${writeCharacteristic.uuid}`);
+          console.log(`✅ Found writable characteristic: ${writeCharacteristic.uuid}`);
         }
       }
 
@@ -458,12 +482,37 @@ class BLEService {
       const services = await device[0].services();
       console.log(`📋 Available services:`, services.map(s => s.uuid));
 
-      const sp105eService = services.find(service =>
+      let sp105eService = services.find(service =>
         service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
       );
 
+      // Try to find ANY usable service if specific not found
       if (!sp105eService) {
-        console.error(`❌ SP105E service (${SP105E_SERVICE_UUID}) not found`);
+        console.log(`🔍 SP105E service (${SP105E_SERVICE_UUID}) not found, trying fallbacks...`);
+
+        // Try FFF0 variations
+        sp105eService = services.find(service => {
+          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
+          return uuid.includes('fff0') || uuid === 'fff0';
+        });
+
+        // Try FFE0 variations
+        if (!sp105eService) {
+          sp105eService = services.find(service => {
+            const uuid = service.uuid.toLowerCase().replace(/-/g, '');
+            return uuid.includes('ffe0') || uuid === 'ffe0';
+          });
+        }
+
+        // Use first available service if nothing else works
+        if (!sp105eService && services.length > 0) {
+          console.log(`🔧 No specific services found, using first available: ${services[0].uuid}`);
+          sp105eService = services[0];
+        }
+      }
+
+      if (!sp105eService) {
+        console.error(`❌ No usable service found! Available services: ${services.map(s => s.uuid).join(', ')}`);
         throw new Error('SP105E service not found');
       }
 
@@ -617,9 +666,23 @@ class BLEService {
       }
 
       const services = await device[0].services();
-      const sp105eService = services.find(service =>
+      let sp105eService = services.find(service =>
         service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
       );
+
+      // Try fallback service discovery for brightness commands
+      if (!sp105eService) {
+        sp105eService = services.find(service => {
+          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
+          return uuid.includes('fff0') || uuid === 'fff0' || uuid.includes('ffe0') || uuid === 'ffe0';
+        });
+
+        // Use any available service
+        if (!sp105eService && services.length > 0) {
+          console.log(`🔧 Using first available service for brightness: ${services[0].uuid}`);
+          sp105eService = services[0];
+        }
+      }
 
       if (!sp105eService) {
         throw new Error('SP105E service not found');
@@ -732,16 +795,24 @@ class BLEService {
   private async findWriteCharacteristic(service: any): Promise<any> {
     const characteristics = await service.characteristics();
 
-    // Try exact match first
+    // Try exact FFF3 match first
     let writeCharacteristic = characteristics.find(char =>
       char.uuid.toLowerCase() === SP105E_CHARACTERISTIC_MAIN.toLowerCase()
     );
 
-    // Try flexible matching for FFF3
+    // Try FFF3 variations
     if (!writeCharacteristic) {
       writeCharacteristic = characteristics.find(char => {
         const uuid = char.uuid.toLowerCase().replace(/-/g, '');
         return uuid.includes('fff3') || uuid === 'fff3';
+      });
+    }
+
+    // Try FFE1 for older SP105E variants
+    if (!writeCharacteristic) {
+      writeCharacteristic = characteristics.find(char => {
+        const uuid = char.uuid.toLowerCase().replace(/-/g, '');
+        return uuid.includes('ffe1') || uuid === 'ffe1';
       });
     }
 
