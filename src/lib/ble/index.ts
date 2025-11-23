@@ -47,44 +47,39 @@ export interface BLEBrightnessCommand {
   brightness: number; // 0-100
 }
 
-// Magic-LED SP105E Controller Constants (researched from protocol documentation)
-const SP105E_SERVICE_UUID = 'FFF0'; // CORRECTED: SP105E uses FFF0 service UUID
-const SP105E_CHARACTERISTIC_MAIN = 'FFF3'; // CORRECTED: SP105E uses FFF3 characteristic
+// ACTUAL SP105E Controller Constants (from reverse engineering research)
+const SP105E_SERVICE_UUID = 'FFE0'; // CORRECTED: SP105E actually uses FFE0 service UUID
+const SP105E_CHARACTERISTIC_MAIN = 'FFE1'; // CORRECTED: SP105E actually uses FFE1 characteristic
 const SP105E_CHARACTERISTIC_INIT = 'FFF2'; // Secondary characteristic for initialization
 const SP105E_DEVICE_NAMES = ['SP105E', 'Magic-LED', 'BLE-LED', 'LED-BLE'];
 
-// CORRECT Magic-LED SP105E Protocol (from protocol documentation)
-// All commands are sent to service FFF0, characteristic FFF3
-const MAGIC_LED_PROTOCOL = {
-  // Power control commands (verified working)
-  POWER_ON: new Uint8Array([0x7E, 0x04, 0x04, 0xF0, 0x00, 0x01, 0xFF, 0x00, 0xEF]),
-  POWER_OFF: new Uint8Array([0x7E, 0x04, 0x04, 0x00, 0x00, 0x00, 0xFF, 0x00, 0xEF]),
+// ACTUAL SP105E Protocol (4-byte commands to FFE0/FFE1)
+// Based on reverse engineering - commands are 4 bytes total
+const SP105E_PROTOCOL = {
+  // Power control commands
+  POWER_ON: new Uint8Array([0x01, 0x00, 0x00, 0x01]),
+  POWER_OFF: new Uint8Array([0x00, 0x00, 0x00, 0x02]),
 
-  // Color commands: 7e070503RRGGBB10ef (documented format)
+  // RGB Color command: [R, G, B, 0x3C]
   SET_COLOR: (r: number, g: number, b: number) =>
-    new Uint8Array([0x7E, 0x07, 0x05, 0x03, r, g, b, 0x10, 0xEF]),
+    new Uint8Array([r, g, b, 0x3C]),
 
-  // Brightness commands: 7e0401xx01ffff00ef (xx = brightness 0-100 in hex)
+  // Brightness command: [brightness, 0x00, 0x00, 0x2A] (brightness 0-100)
   SET_BRIGHTNESS: (brightness: number) =>
-    new Uint8Array([0x7E, 0x04, 0x01, brightness, 0x01, 0xFF, 0xFF, 0x00, 0xEF]),
+    new Uint8Array([brightness, 0x00, 0x00, 0x2A]),
 
-  // Effect speed commands: 7e0402xxffffff00ef
-  SET_SPEED: (speed: number) =>
-    new Uint8Array([0x7E, 0x04, 0x02, speed, 0xFF, 0xFF, 0xFF, 0x00, 0xEF]),
+  // Effect/Pattern command: [pattern, speed, 0x00, 0x2C]
+  SET_PATTERN: (pattern: number, speed: number = 50) =>
+    new Uint8Array([pattern, speed, 0x00, 0x2C]),
 
-  // Effect commands: 7e0503xx06ffff00ef
-  SET_EFFECT: (effect: number) =>
-    new Uint8Array([0x7E, 0x05, 0x03, effect, 0x06, 0xFF, 0xFF, 0x00, 0xEF]),
+  // Pixel count setting: [count_low, count_high, 0x00, 0x2D]
+  SET_PIXEL_COUNT: (count: number) =>
+    new Uint8Array([count & 0xFF, (count >> 8) & 0xFF, 0x00, 0x2D]),
 };
 
-// Backward compatibility - use the correct protocol
-const SP105E_PROTOCOLS = {
-  MAGIC_LED: MAGIC_LED_PROTOCOL,
-  SP105E_VERIFIED: MAGIC_LED_PROTOCOL, // Same as MAGIC_LED, this is the correct one
-};
-
-// Keep original reference for backward compatibility
-const MAGIC_LED_COMMANDS = MAGIC_LED_PROTOCOL;
+// Use the actual SP105E protocol
+const MAGIC_LED_PROTOCOL = SP105E_PROTOCOL; // Use real SP105E commands
+const MAGIC_LED_COMMANDS = SP105E_PROTOCOL; // Backward compatibility
 
 // Mock delay function
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -364,38 +359,38 @@ class BLEService {
         throw new Error(`SP105E control characteristic not found. Available: ${characteristics.map(c => c.uuid).join(', ')}`);
       }
 
-      // Initialize SP105E with correct Magic-LED protocol
-      console.log('\n🚀 STARTING SP105E MAGIC-LED INITIALIZATION');
+      // Initialize SP105E with correct 4-byte protocol
+      console.log('\n🚀 STARTING SP105E INITIALIZATION');
       console.log(`📋 Using Service: ${SP105E_SERVICE_UUID}, Characteristic: ${SP105E_CHARACTERISTIC_MAIN}`);
       console.log(`📋 Found ${characteristics.length} characteristics`);
       characteristics.forEach(char => {
         console.log(`  - ${char.uuid} (write: ${char.isWritableWithoutResponse}/${char.isWritableWithResponse}, read: ${char.isReadable})`);
       });
 
-      // Send Magic-LED Power On command to initialize
+      // Send SP105E Power On command to initialize (4-byte format)
       try {
-        console.log(`\n🔌 SENDING MAGIC-LED POWER ON COMMAND`);
-        const powerOnCommand = MAGIC_LED_PROTOCOL.POWER_ON;
+        console.log(`\n🔌 SENDING SP105E POWER ON COMMAND`);
+        const powerOnCommand = SP105E_PROTOCOL.POWER_ON;
         console.log(`📤 Power On bytes:`, Array.from(powerOnCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-        console.log(`📤 Power On hex: 7E 04 04 F0 00 01 FF 00 EF`);
+        console.log(`📤 Expected format: 4-byte command [0x01, 0x00, 0x00, 0x01]`);
 
         // Send power on command
         if (writeCharacteristic.isWritableWithoutResponse) {
           await writeCharacteristic.writeWithoutResponse(
             uint8ArrayToBase64(powerOnCommand)
           );
-          console.log(`✅ Magic-LED POWER_ON command sent via writeWithoutResponse`);
+          console.log(`✅ SP105E POWER_ON command sent via writeWithoutResponse`);
         } else if (writeCharacteristic.isWritableWithResponse) {
           await writeCharacteristic.writeWithResponse(
             uint8ArrayToBase64(powerOnCommand)
           );
-          console.log(`✅ Magic-LED POWER_ON command sent via writeWithResponse`);
+          console.log(`✅ SP105E POWER_ON command sent via writeWithResponse`);
         }
 
-        await delay(300); // Give device time to initialize
+        await delay(100); // Brief delay for initialization
 
       } catch (initError) {
-        console.error(`❌ Magic-LED initialization failed:`, initError.message);
+        console.error(`❌ SP105E initialization failed:`, initError.message);
         // Continue anyway, the device might still be usable
       }
 
@@ -533,13 +528,13 @@ class BLEService {
       console.log(`✅ Write characteristic found: ${writeCharacteristic.uuid}`);
       console.log(`📝 Characteristic capabilities: writeWithResponse=${writeCharacteristic.isWritableWithResponse}, writeWithoutResponse=${writeCharacteristic.isWritableWithoutResponse}`);
 
-      // Send Magic-LED color command (correct SP105E protocol)
-      console.log(`\n🎨 SENDING MAGIC-LED COLOR COMMAND`);
-      const colorCommand = MAGIC_LED_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
+      // Send SP105E color command (4-byte protocol)
+      console.log(`\n🎨 SENDING SP105E COLOR COMMAND`);
+      const colorCommand = SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
 
       console.log(`🎨 Color RGB: ${command.red}, ${command.green}, ${command.blue}`);
-      console.log(`📤 Magic-LED command bytes:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: 7E 07 05 03 ${command.red.toString(16).padStart(2, '0').toUpperCase()} ${command.green.toString(16).padStart(2, '0').toUpperCase()} ${command.blue.toString(16).padStart(2, '0').toUpperCase()} 10 EF`);
+      console.log(`📤 SP105E command bytes:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Expected format: [${command.red.toString(16).padStart(2, '0').toUpperCase()}, ${command.green.toString(16).padStart(2, '0').toUpperCase()}, ${command.blue.toString(16).padStart(2, '0').toUpperCase()}, 3C]`);
 
       // Send the color command to SP105E
       if (writeCharacteristic.isWritableWithoutResponse) {
@@ -547,18 +542,18 @@ class BLEService {
         await writeCharacteristic.writeWithoutResponse(
           uint8ArrayToBase64(colorCommand)
         );
-        console.log(`✅ Magic-LED color command sent successfully!`);
+        console.log(`✅ SP105E color command sent successfully!`);
       } else if (writeCharacteristic.isWritableWithResponse) {
         console.log(`📡 Sending color command via writeWithResponse...`);
         await writeCharacteristic.writeWithResponse(
           uint8ArrayToBase64(colorCommand)
         );
-        console.log(`✅ Magic-LED color command sent successfully!`);
+        console.log(`✅ SP105E color command sent successfully!`);
       } else {
         throw new Error('No writable characteristic found for color command');
       }
 
-      console.log(`\n🎯 Magic-LED color command sent for RGB(${command.red},${command.green},${command.blue})`);
+      console.log(`\n🎯 SP105E color command sent for RGB(${command.red},${command.green},${command.blue})`);
       console.log(`💡 Your SP105E LED ring should now display the new color!`);
 
     } catch (error) {
@@ -573,18 +568,43 @@ class BLEService {
     }
 
     try {
-      // Only send commands to real BLE devices
+      console.log(`\n🎭 STARTING SP105E MODE COMMAND for ${deviceId}`);
+      console.log(`🎯 Mode: ${command.mode}${command.speed ? `, Speed: ${command.speed}` : ''}`);
 
-      // Real device command
       const device = await this.bleManager.devices([deviceId]);
       if (device.length === 0) {
         throw new Error('Device not found');
       }
 
       const services = await device[0].services();
-      const sp105eService = services.find(service =>
+      let sp105eService = services.find(service =>
         service.uuid.toLowerCase() === SP105E_SERVICE_UUID.toLowerCase()
       );
+
+      // Try fallback service discovery
+      if (!sp105eService) {
+        console.log(`🔍 SP105E service (${SP105E_SERVICE_UUID}) not found, trying fallbacks...`);
+
+        // Try FFF0 variations
+        sp105eService = services.find(service => {
+          const uuid = service.uuid.toLowerCase().replace(/-/g, '');
+          return uuid.includes('fff0') || uuid === 'fff0';
+        });
+
+        // Try FFE0 variations
+        if (!sp105eService) {
+          sp105eService = services.find(service => {
+            const uuid = service.uuid.toLowerCase().replace(/-/g, '');
+            return uuid.includes('ffe0') || uuid === 'ffe0';
+          });
+        }
+
+        // Use first available service if nothing else works
+        if (!sp105eService && services.length > 0) {
+          console.log(`🔧 No specific services found, using first available: ${services[0].uuid}`);
+          sp105eService = services[0];
+        }
+      }
 
       if (!sp105eService) {
         throw new Error('SP105E service not found');
@@ -592,57 +612,61 @@ class BLEService {
 
       const writeCharacteristic = await this.findWriteCharacteristic(sp105eService);
       if (!writeCharacteristic) {
-        throw new Error('SP105E control characteristic (FFF3) not found');
+        throw new Error('SP105E control characteristic not found');
       }
 
-      // Map cup modes to Magic-LED effects using SET_EFFECT command
-      console.log(`\n✨ SENDING MAGIC-LED MODE/EFFECT COMMAND`);
+      // Map cup modes to SP105E pattern numbers
+      let patternNumber = 1;
+      let speed = command.speed || 5; // Default speed
 
-      let effectNumber = 1; // Default effect number
       switch (command.mode) {
         case 'static':
-          // For static mode, we don't change effects, just set solid color
-          console.log('Static mode - color setting handled separately, no effect needed');
+          // For static mode, we don't change patterns
+          console.log('Static mode - pattern change not needed');
           return;
         case 'pulse':
-          effectNumber = 5; // Breathing/pulse effect
+          patternNumber = 3; // SP105E breathing/pulse pattern
           break;
         case 'strobe':
-          effectNumber = 15; // Strobe effect
+          patternNumber = 6; // SP105E strobe pattern
           break;
         case 'rainbow':
-          effectNumber = 1; // Rainbow effect
+          patternNumber = 1; // SP105E rainbow pattern
           break;
         default:
-          effectNumber = 1;
+          patternNumber = 1;
       }
 
-      // Send Magic-LED effect command: 7e0503xx06ffff00ef
-      const effectCommand = MAGIC_LED_PROTOCOL.SET_EFFECT(effectNumber);
-      console.log(`✨ Mode: ${command.mode}, Effect: ${effectNumber}`);
-      console.log(`📤 Magic-LED effect command:`, Array.from(effectCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: 7E 05 03 ${effectNumber.toString(16).padStart(2, '0').toUpperCase()} 06 FF FF 00 EF`);
+      // Send SP105E pattern command (4-byte protocol)
+      console.log(`\n🎭 SENDING SP105E PATTERN COMMAND`);
+      const patternCommand = SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed * 10);
 
-      await writeCharacteristic.writeWithoutResponse(
-        uint8ArrayToBase64(effectCommand)
-      );
+      console.log(`🎭 Mode: ${command.mode} -> Pattern: ${patternNumber}, Speed: ${speed}`);
+      console.log(`📤 SP105E command bytes:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Expected format: [${patternNumber.toString(16).padStart(2, '0').toUpperCase()}, ${(speed * 10).toString(16).padStart(2, '0').toUpperCase()}, 00, 2C]`);
 
-      // If speed is provided, send speed command: 7e0402xxffffff00ef
-      if (command.speed !== undefined) {
-        const speedValue = Math.round((command.speed / 10) * 100); // Convert 1-10 scale to 0-100
-        const speedCommand = MAGIC_LED_PROTOCOL.SET_SPEED(speedValue);
-        console.log(`🏃 Speed: ${command.speed}/10 -> ${speedValue}/100`);
-        console.log(`📤 Magic-LED speed command:`, Array.from(speedCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-
+      // Send the pattern command to SP105E
+      if (writeCharacteristic.isWritableWithoutResponse) {
+        console.log(`📡 Sending pattern command via writeWithoutResponse...`);
         await writeCharacteristic.writeWithoutResponse(
-          uint8ArrayToBase64(speedCommand)
+          uint8ArrayToBase64(patternCommand)
         );
+        console.log(`✅ SP105E pattern command sent successfully!`);
+      } else if (writeCharacteristic.isWritableWithResponse) {
+        console.log(`📡 Sending pattern command via writeWithResponse...`);
+        await writeCharacteristic.writeWithResponse(
+          uint8ArrayToBase64(patternCommand)
+        );
+        console.log(`✅ SP105E pattern command sent successfully!`);
+      } else {
+        throw new Error('No writable characteristic found for pattern command');
       }
 
-      console.log(`✅ Magic-LED mode/effect command sent to SP105E ${deviceId}:`, command,
-                  `Effect: ${effectNumber}`);
+      console.log(`\n🎯 SP105E pattern command sent: ${command.mode} (Pattern ${patternNumber})`);
+      console.log(`💡 Your SP105E LED ring should now display the ${command.mode} effect!`);
+
     } catch (error) {
-      console.error('Failed to send mode command:', error);
+      console.error('❌ CRITICAL: Failed to send mode command:', error);
       throw error;
     }
   }
@@ -656,7 +680,7 @@ class BLEService {
       throw new Error('Brightness must be between 0 and 100');
     }
 
-    console.log(`\n🔆 STARTING BRIGHTNESS COMMAND DEBUG for ${deviceId}`);
+    console.log(`\n🔆 STARTING SP105E BRIGHTNESS COMMAND for ${deviceId}`);
     console.log(`💪 Input brightness: ${command.brightness}%`);
 
     try {
@@ -693,15 +717,14 @@ class BLEService {
         throw new Error('SP105E control characteristic not found');
       }
 
-      // Send Magic-LED brightness command (correct SP105E protocol)
-      console.log(`\n🔆 SENDING MAGIC-LED BRIGHTNESS COMMAND`);
+      // Send SP105E brightness command (4-byte protocol)
+      console.log(`\n🔆 SENDING SP105E BRIGHTNESS COMMAND`);
 
-      // Magic-LED brightness uses 0-100 scale directly
-      const brightnessCommand = MAGIC_LED_PROTOCOL.SET_BRIGHTNESS(command.brightness);
+      const brightnessCommand = SP105E_PROTOCOL.SET_BRIGHTNESS(command.brightness);
 
       console.log(`💡 Brightness: ${command.brightness}%`);
-      console.log(`📤 Magic-LED brightness command:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      console.log(`📤 Expected format: 7E 04 01 ${command.brightness.toString(16).padStart(2, '0').toUpperCase()} 01 FF FF 00 EF`);
+      console.log(`📤 SP105E command bytes:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      console.log(`📤 Expected format: [${command.brightness.toString(16).padStart(2, '0').toUpperCase()}, 00, 00, 2A]`);
 
       // Send the brightness command to SP105E
       if (writeCharacteristic.isWritableWithoutResponse) {
@@ -709,22 +732,22 @@ class BLEService {
         await writeCharacteristic.writeWithoutResponse(
           uint8ArrayToBase64(brightnessCommand)
         );
-        console.log(`✅ Magic-LED brightness command sent successfully!`);
+        console.log(`✅ SP105E brightness command sent successfully!`);
       } else if (writeCharacteristic.isWritableWithResponse) {
         console.log(`📡 Sending brightness command via writeWithResponse...`);
         await writeCharacteristic.writeWithResponse(
           uint8ArrayToBase64(brightnessCommand)
         );
-        console.log(`✅ Magic-LED brightness command sent successfully!`);
+        console.log(`✅ SP105E brightness command sent successfully!`);
       } else {
         throw new Error('No writable characteristic found for brightness command');
       }
 
-      console.log(`\n🎯 Magic-LED brightness command sent for ${command.brightness}%`);
+      console.log(`\n🎯 SP105E brightness command sent for ${command.brightness}%`);
       console.log(`💡 Your SP105E LED ring brightness should now be updated!`);
 
     } catch (error) {
-      console.error('❌ Failed to send brightness command:', error);
+      console.error('❌ CRITICAL: Failed to send brightness command:', error);
       throw error;
     }
   }
