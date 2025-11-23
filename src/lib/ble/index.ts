@@ -75,34 +75,7 @@ const uint8ArrayToBase64 = (uint8Array: Uint8Array): string => {
   return btoa(binary);
 };
 
-// Keep mock devices for demo purposes (can be disabled in production)
-const ENABLE_MOCK_DEVICES = false; // Set to false for real Bluetooth scanning only
-const mockDevices: BLEDevice[] = [
-  {
-    id: 'cup-1',
-    name: 'Nite Cup 1',
-    rssi: -45,
-    isConnectable: true,
-  },
-  {
-    id: 'cup-2',
-    name: 'Nite Cup 2',
-    rssi: -52,
-    isConnectable: true,
-  },
-  {
-    id: 'cup-3',
-    name: 'Nite Cup 3',
-    rssi: -38,
-    isConnectable: true,
-  },
-  {
-    id: 'sp105e-demo',
-    name: 'SP105E',
-    rssi: -56,
-    isConnectable: true,
-  },
-];
+// Mock devices completely removed - only real SP105E devices supported
 
 class BLEService {
   private static instance: BLEService;
@@ -204,13 +177,7 @@ class BLEService {
     this.discoveredDevices.clear();
 
     try {
-      // Add mock devices for demo/development (only if enabled)
-      if (ENABLE_MOCK_DEVICES) {
-        mockDevices.forEach(device => {
-          this.discoveredDevices.set(device.id, device);
-        });
-        this.notifyScanListeners(Array.from(this.discoveredDevices.values()));
-      }
+      // Only scan for real BLE devices
 
       // Only start real BLE scan if manager is available
       if (this.bleManager) {
@@ -241,7 +208,7 @@ class BLEService {
           }
         );
       } else {
-        console.log('BLE scanning not available - showing mock devices only');
+        console.log('BLE scanning not available - no devices can be discovered');
       }
 
       // Stop scan after 10 seconds
@@ -275,20 +242,7 @@ class BLEService {
 
   async connectToDevice(deviceId: string): Promise<void> {
     try {
-      // Check if it's a mock device first
-      const mockDevice = mockDevices.find(d => d.id === deviceId);
-      if (mockDevice) {
-        await delay(1500); // Simulate connection time for mock
-        const connectionState: BLEConnectionState = {
-          deviceId,
-          isConnected: true,
-          batteryLevel: Math.floor(Math.random() * 40) + 60,
-          firmwareVersion: '2.1.0',
-        };
-        this.connectedDevices.set(deviceId, connectionState);
-        this.notifyConnectionListeners(connectionState);
-        return;
-      }
+      // Only connect to real BLE devices
 
       // Real device connection
       console.log('Connecting to device:', deviceId);
@@ -424,18 +378,7 @@ class BLEService {
 
   async disconnectFromDevice(deviceId: string): Promise<void> {
     try {
-      // Check if it's a mock device first
-      const mockDevice = mockDevices.find(d => d.id === deviceId);
-      if (mockDevice) {
-        await delay(500); // Simulate disconnection time for mock
-        const connectionState = this.connectedDevices.get(deviceId);
-        if (connectionState) {
-          connectionState.isConnected = false;
-          this.connectedDevices.delete(deviceId);
-          this.notifyConnectionListeners(connectionState);
-        }
-        return;
-      }
+      // Only disconnect from real BLE devices
 
       // Real device disconnection
       const device = await this.bleManager.devices([deviceId]);
@@ -468,13 +411,7 @@ class BLEService {
     }
 
     try {
-      // Check if it's a mock device first
-      const mockDevice = mockDevices.find(d => d.id === deviceId);
-      if (mockDevice) {
-        await delay(200); // Simulate command transmission for mock
-        console.log(`Sent color command to mock device ${deviceId}:`, command);
-        return;
-      }
+      // Only send commands to real BLE devices
 
       // Real device command
       const device = await this.bleManager.devices([deviceId]);
@@ -530,13 +467,7 @@ class BLEService {
     }
 
     try {
-      // Check if it's a mock device first
-      const mockDevice = mockDevices.find(d => d.id === deviceId);
-      if (mockDevice) {
-        await delay(200); // Simulate command transmission for mock
-        console.log(`Sent mode command to mock device ${deviceId}:`, command);
-        return;
-      }
+      // Only send commands to real BLE devices
 
       // Real device command
       const device = await this.bleManager.devices([deviceId]);
@@ -613,13 +544,7 @@ class BLEService {
     }
 
     try {
-      // Check if it's a mock device first
-      const mockDevice = mockDevices.find(d => d.id === deviceId);
-      if (mockDevice) {
-        await delay(150); // Simulate command transmission for mock
-        console.log(`Sent brightness command to mock device ${deviceId}:`, command);
-        return;
-      }
+      // Only send commands to real BLE devices
 
       // Real device command
       const device = await this.bleManager.devices([deviceId]);
