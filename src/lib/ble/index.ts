@@ -80,43 +80,65 @@ const SP105E_CHARACTERISTIC_MAIN = 'FFE1'; // Confirmed from LightBlue: FFE1 cha
 const SP105E_DEVICE_NAMES = ['SP105E', 'Magic-LED', 'BLE-LED', 'LED-BLE'];
 
 // SP105E Protocol Implementation
-// Based on LightBlue analysis showing: 01CB 0204 0400 0258 (8 bytes)
-// Research shows SP105E uses simple command structure:
-// [0x38, RED, GREEN, BLUE] for color commands
-// [0x3A, BRIGHTNESS] for brightness commands
-// [0x3C, PATTERN, SPEED] for effect commands
+// Based on LightBlue analysis and testing with real hardware
+// Trying multiple known SP105E protocols since devices vary by firmware
 const SP105E_PROTOCOL = {
-  // Power control commands (standard SP105E format)
-  POWER_ON: new Uint8Array([0x71, 0x23, 0x0F, 0xA3]),
-  POWER_OFF: new Uint8Array([0x71, 0x24, 0x0F, 0xA4]),
-
-  // RGB Color command: Simple 4-byte format
+  // Protocol 1: Magic Home / WiZ compatible (most common)
   SET_COLOR: (r: number, g: number, b: number) => {
+    // 7-byte format used by many SP105E clones
+    return new Uint8Array([0x56, r, g, b, 0x00, 0xF0, 0xAA]);
+  },
+
+  // Protocol 2: BTF-Lighting format
+  SET_COLOR_V2: (r: number, g: number, b: number) => {
+    // 9-byte format with checksum
+    const data = [0x7E, 0x00, 0x03, r, g, b, 0x00, 0xEF];
+    const checksum = data.reduce((sum, byte) => sum + byte, 0) & 0xFF;
+    return new Uint8Array([...data, checksum]);
+  },
+
+  // Protocol 3: Simple 4-byte format
+  SET_COLOR_V3: (r: number, g: number, b: number) => {
     return new Uint8Array([0x38, r, g, b]);
   },
 
-  // Brightness command: 2-byte format
+  // Protocol 4: Standard LED strip format
+  SET_COLOR_V4: (r: number, g: number, b: number) => {
+    return new Uint8Array([0xCC, r, g, b, 0x33, 0x33, 0x33]);
+  },
+
+  // Brightness commands (multiple formats)
   SET_BRIGHTNESS: (brightness: number) => {
-    // SP105E expects brightness 0-255, convert from 0-100
+    const sp105eBrightness = Math.round((brightness / 100) * 255);
+    return new Uint8Array([0x56, 0x00, 0x00, 0x00, sp105eBrightness, 0x0F, 0xAA]);
+  },
+
+  SET_BRIGHTNESS_V2: (brightness: number) => {
     const sp105eBrightness = Math.round((brightness / 100) * 255);
     return new Uint8Array([0x3A, sp105eBrightness]);
   },
 
-  // Effect/Pattern command: 3-byte format
+  // Pattern commands
   SET_PATTERN: (pattern: number, speed: number = 50) => {
-    // Convert speed from 0-100 to 0-255
+    const sp105eSpeed = Math.round((speed / 100) * 255);
+    return new Uint8Array([0xBB, pattern, sp105eSpeed, 0x44]);
+  },
+
+  SET_PATTERN_V2: (pattern: number, speed: number = 50) => {
     const sp105eSpeed = Math.round((speed / 100) * 255);
     return new Uint8Array([0x3C, pattern, sp105eSpeed]);
   },
 
-  // Alternative color format that may work better
-  SET_COLOR_ALT: (r: number, g: number, b: number) => {
-    // Some SP105E variants use this format
-    return new Uint8Array([0x56, r, g, b, 0x00, 0xF0, 0xAA]);
-  },
+  // Power commands
+  POWER_ON: new Uint8Array([0x71, 0x23, 0x0F, 0xA3]),
+  POWER_OFF: new Uint8Array([0x71, 0x24, 0x0F, 0xA4]),
+
+  // Alternative power commands
+  POWER_ON_V2: new Uint8Array([0xCC, 0x23, 0x33]),
+  POWER_OFF_V2: new Uint8Array([0xCC, 0x24, 0x33]),
 
   // Initialize command
-  INITIALIZE: new Uint8Array([0x38, 0x00, 0x00, 0x00]), // Set to black initially
+  INITIALIZE: new Uint8Array([0x56, 0x00, 0x00, 0x00, 0x00, 0xF0, 0xAA]), // Black with Magic Home format
 };
 
 // Use the actual SP105E protocol
@@ -458,23 +480,28 @@ class BLEService {
     console.log(`📤 Input RGB: ${command.red}, ${command.green}, ${command.blue}`);
 
     try {
-      // Try primary protocol first
-      let colorCommand = SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue);
-      console.log(`📤 Primary command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      const protocols = [
+        { name: 'Magic Home V1', cmd: SP105E_PROTOCOL.SET_COLOR(command.red, command.green, command.blue) },
+        { name: 'BTF-Lighting V2', cmd: SP105E_PROTOCOL.SET_COLOR_V2(command.red, command.green, command.blue) },
+        { name: 'Simple V3', cmd: SP105E_PROTOCOL.SET_COLOR_V3(command.red, command.green, command.blue) },
+        { name: 'LED Strip V4', cmd: SP105E_PROTOCOL.SET_COLOR_V4(command.red, command.green, command.blue) }
+      ];
 
-      try {
-        await this.sendCommandToDevice(deviceId, colorCommand);
-        console.log(`✅ SP105E color command sent successfully with primary protocol`);
-        return;
-      } catch (primaryError) {
-        console.log(`⚠️ Primary protocol failed, trying alternative...`);
+      let success = false;
+      for (const protocol of protocols) {
+        try {
+          console.log(`📤 Trying ${protocol.name}:`, Array.from(protocol.cmd).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+          await this.sendCommandToDevice(deviceId, protocol.cmd);
+          console.log(`✅ SUCCESS! ${protocol.name} protocol worked!`);
+          success = true;
+          break;
+        } catch (protocolError) {
+          console.log(`⚠️ ${protocol.name} failed, trying next protocol...`);
+        }
+      }
 
-        // Try alternative protocol
-        colorCommand = SP105E_PROTOCOL.SET_COLOR_ALT(command.red, command.green, command.blue);
-        console.log(`📤 Alternative command:`, Array.from(colorCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-
-        await this.sendCommandToDevice(deviceId, colorCommand);
-        console.log(`✅ SP105E color command sent successfully with alternative protocol`);
+      if (!success) {
+        throw new Error('All color protocols failed');
       }
 
       console.log(`💡 Your SP105E LED ring should now display RGB(${command.red},${command.green},${command.blue})!`);
@@ -516,11 +543,28 @@ class BLEService {
           patternNumber = 1;
       }
 
-      const patternCommand = SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed);
-      console.log(`📤 Pattern command:`, Array.from(patternCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      // Try multiple pattern protocols
+      const patternProtocols = [
+        { name: 'Pattern V1', cmd: SP105E_PROTOCOL.SET_PATTERN(patternNumber, speed) },
+        { name: 'Pattern V2', cmd: SP105E_PROTOCOL.SET_PATTERN_V2(patternNumber, speed) }
+      ];
 
-      await this.sendCommandToDevice(deviceId, patternCommand);
-      console.log(`✅ SP105E pattern command sent: ${command.mode} (Pattern ${patternNumber})`);
+      let success = false;
+      for (const protocol of patternProtocols) {
+        try {
+          console.log(`📤 Trying ${protocol.name}:`, Array.from(protocol.cmd).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+          await this.sendCommandToDevice(deviceId, protocol.cmd);
+          console.log(`✅ SUCCESS! ${protocol.name} protocol worked for ${command.mode}!`);
+          success = true;
+          break;
+        } catch (protocolError) {
+          console.log(`⚠️ ${protocol.name} failed, trying next...`);
+        }
+      }
+
+      if (!success) {
+        console.log(`⚠️ All pattern protocols failed, device may not support mode: ${command.mode}`);
+      }
 
     } catch (error) {
       console.error('❌ CRITICAL: Failed to send mode command:', error);
@@ -541,11 +585,28 @@ class BLEService {
     console.log(`💡 Brightness: ${command.brightness}%`);
 
     try {
-      const brightnessCommand = SP105E_PROTOCOL.SET_BRIGHTNESS(command.brightness);
-      console.log(`📤 Brightness command:`, Array.from(brightnessCommand).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      // Try multiple brightness protocols
+      const brightnessProtocols = [
+        { name: 'Brightness V1', cmd: SP105E_PROTOCOL.SET_BRIGHTNESS(command.brightness) },
+        { name: 'Brightness V2', cmd: SP105E_PROTOCOL.SET_BRIGHTNESS_V2(command.brightness) }
+      ];
 
-      await this.sendCommandToDevice(deviceId, brightnessCommand);
-      console.log(`✅ SP105E brightness command sent for ${command.brightness}%`);
+      let success = false;
+      for (const protocol of brightnessProtocols) {
+        try {
+          console.log(`📤 Trying ${protocol.name}:`, Array.from(protocol.cmd).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+          await this.sendCommandToDevice(deviceId, protocol.cmd);
+          console.log(`✅ SUCCESS! ${protocol.name} protocol worked for ${command.brightness}%!`);
+          success = true;
+          break;
+        } catch (protocolError) {
+          console.log(`⚠️ ${protocol.name} failed, trying next...`);
+        }
+      }
+
+      if (!success) {
+        console.log(`⚠️ All brightness protocols failed, device may not support brightness control`);
+      }
 
     } catch (error) {
       console.error('❌ CRITICAL: Failed to send brightness command:', error);

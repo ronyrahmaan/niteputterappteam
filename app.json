@@ -26,6 +26,7 @@
       }
     },
     "android": {
+      "package": "com.mdarahman.niteputter",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
