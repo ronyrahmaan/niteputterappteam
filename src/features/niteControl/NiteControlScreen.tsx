@@ -25,6 +25,7 @@ import { SkyBackground } from '../../components/ui';
 import { NiteControlScreenProps } from '../../types/navigation';
 import { AddCupOptionsModal } from '../../components/ui/AddCupOptionsModal';
 import { BleScanModal } from './BleScanModal';
+import { bleService } from '../../lib/ble';
 
 const { width } = Dimensions.get('window');
 
@@ -76,6 +77,8 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
   const [showBleModal, setShowBleModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Animation values
   const fadeOpacity = useSharedValue(0);
@@ -138,6 +141,41 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
   useEffect(() => {
     setLocalBrightness(currentBrightness);
   }, [currentBrightness]);
+
+  // Debug logging function
+  const addDebugLog = useCallback((message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    const logMessage = `${icon} ${timestamp}: ${message}`;
+    setDebugLog(prev => [logMessage, ...prev.slice(0, 19)]); // Keep last 20 logs
+  }, []);
+
+  // Override console.log for debugging
+  useEffect(() => {
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+
+    console.log = (...args) => {
+      originalConsoleLog(...args);
+      const message = args.join(' ');
+      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE') || message.includes('color') || message.includes('brightness')) {
+        addDebugLog(message, 'info');
+      }
+    };
+
+    console.error = (...args) => {
+      originalConsoleError(...args);
+      const message = args.join(' ');
+      if (message.includes('Magic-LED') || message.includes('SP105E') || message.includes('BLE')) {
+        addDebugLog(message, 'error');
+      }
+    };
+
+    return () => {
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+    };
+  }, [addDebugLog]);
 
   // Pulse animation for connected state
   useEffect(() => {
@@ -208,16 +246,22 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
   }, [connectedCups, disconnectFromCup]);
 
   const handleColorSelect = useCallback(async (color: string) => {
+    addDebugLog(`🎨 Color selection: ${color}`);
+
     // If no cups selected but connected cups exist, auto-select all connected cups
     if (selectedConnectedCups.length === 0 && connectedCups.length > 0) {
+      addDebugLog(`📋 Auto-selecting ${connectedCups.length} connected cups`);
       selectAllCups();
       // Small delay to ensure selection is processed
       setTimeout(async () => {
         try {
+          addDebugLog(`📡 Sending color command to ${connectedCups.length} cups...`);
           await setColor(color);
+          addDebugLog(`✅ Color command sent successfully!`, 'success');
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (error) {
           console.error('Failed to set color:', error);
+          addDebugLog(`❌ Color command failed: ${error.message}`, 'error');
         }
       }, 100);
       return;
@@ -225,17 +269,21 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
 
     // If still no connected cups, show helpful message
     if (connectedCups.length === 0) {
+      addDebugLog(`⚠️ No connected cups available`, 'error');
       Alert.alert('No Connected Cups', 'Please connect cups first by tapping the Multi-Cup button.');
       return;
     }
 
     try {
+      addDebugLog(`📡 Sending color to ${selectedConnectedCups.length} selected cups...`);
       await setColor(color);
+      addDebugLog(`✅ Color command sent successfully!`, 'success');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       console.error('Failed to set color:', error);
+      addDebugLog(`❌ Color command failed: ${error.message}`, 'error');
     }
-  }, [selectedConnectedCups.length, connectedCups.length, setColor, selectAllCups]);
+  }, [selectedConnectedCups.length, connectedCups.length, setColor, selectAllCups, addDebugLog]);
 
   const handleBrightnessChange = useCallback(async (newBrightness: number) => {
     // Auto-select all connected cups if none selected
@@ -714,6 +762,69 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
 
         {/* BLE Scan Modal */}
         <BleScanModal visible={showBleModal} onClose={() => setShowBleModal(false)} />
+
+        {/* Debug Panel */}
+        {showDebugPanel && (
+          <View style={styles.debugPanel}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>🔧 BLE Debug Panel</Text>
+              <TouchableOpacity
+                onPress={() => setShowDebugPanel(false)}
+                style={styles.debugCloseButton}
+              >
+                <Ionicons name="close" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugLog} showsVerticalScrollIndicator={false}>
+              {debugLog.map((log, index) => (
+                <Text key={index} style={styles.debugLogText}>{log}</Text>
+              ))}
+              {debugLog.length === 0 && (
+                <Text style={styles.debugEmptyText}>Debug logs will appear here...</Text>
+              )}
+            </ScrollView>
+            <View style={styles.debugActions}>
+              <TouchableOpacity
+                onPress={() => setDebugLog([])}
+                style={styles.debugClearButton}
+              >
+                <Text style={styles.debugActionText}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  addDebugLog('🔍 BLE Status Check...');
+                  bleService.isBluetoothEnabled().then(enabled => {
+                    addDebugLog(`📶 Bluetooth: ${enabled ? 'ON' : 'OFF'}`, enabled ? 'success' : 'error');
+                  }).catch(error => {
+                    addDebugLog(`❌ BLE check failed: ${error.message}`, 'error');
+                  });
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Test BLE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Debug Panel Toggle - Floating Button */}
+        <TouchableOpacity
+          style={styles.debugToggle}
+          onPress={() => {
+            setShowDebugPanel(!showDebugPanel);
+            if (!showDebugPanel) {
+              addDebugLog('🔧 Debug panel opened');
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="bug" size={20} color="#FFFFFF" />
+          {debugLog.length > 0 && (
+            <View style={styles.debugBadge}>
+              <Text style={styles.debugBadgeText}>{debugLog.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </SafeAreaView>
     </View>
   );
@@ -1251,5 +1362,117 @@ const styles = StyleSheet.create({
     color: '#00FF88',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
     fontWeight: '600',
+  },
+
+  // Debug Panel Styles
+  debugPanel: {
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    height: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  debugHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  debugTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  debugCloseButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  debugLog: {
+    flex: 1,
+    padding: 8,
+  },
+  debugLogText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginBottom: 4,
+    lineHeight: 14,
+  },
+  debugEmptyText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  debugActions: {
+    flexDirection: 'row',
+    padding: 8,
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  debugClearButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    padding: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  debugTestButton: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 255, 136, 0.2)',
+    padding: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  debugActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  debugToggle: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0, 255, 136, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  debugBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  debugBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });
