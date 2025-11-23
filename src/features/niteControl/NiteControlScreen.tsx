@@ -1444,7 +1444,7 @@ const styles = StyleSheet.create({
   },
   debugToggle: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 100,
     right: 20,
     width: 56,
     height: 56,
