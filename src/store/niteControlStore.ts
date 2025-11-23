@@ -79,36 +79,8 @@ interface NiteControlActions {
 
 type NiteControlStore = NiteControlState & NiteControlActions;
 
-// Mock cups data
-const mockCups: Cup[] = [
-  {
-    id: 'cup-1',
-    name: 'Cup 1',
-    isConnected: false,
-    batteryLevel: 85,
-    color: '#00FF88',
-    mode: 'static',
-    brightness: 80,
-  },
-  {
-    id: 'cup-2',
-    name: 'Cup 2',
-    isConnected: false,
-    batteryLevel: 92,
-    color: '#00D4FF',
-    mode: 'pulse',
-    brightness: 75,
-  },
-  {
-    id: 'cup-3',
-    name: 'Cup 3',
-    isConnected: false,
-    batteryLevel: 67,
-    color: '#B347FF',
-    mode: 'static',
-    brightness: 90,
-  },
-];
+// Start with empty cups array - devices will be added via real BLE scanning
+const initialCups: Cup[] = [];
 
 // Initialize BLE service
 bleService.initialize().catch(console.error);
@@ -117,7 +89,7 @@ export const useNiteControlStore = create<NiteControlStore>()(
   persist(
     (set, get) => ({
       // State
-      cups: mockCups,
+      cups: initialCups,
       selectedCups: [],
       colorPresets: [
         {
