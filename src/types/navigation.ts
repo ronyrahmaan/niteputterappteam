@@ -16,6 +16,7 @@ export type TabParamList = {
   Home: undefined;
   Shop: NavigatorScreenParams<ShopStackParamList>;
   NiteControl: NavigatorScreenParams<NiteControlStackParamList>;
+  ProtocolLab: NavigatorScreenParams<ProtocolLabStackParamList>;
   Profile: NavigatorScreenParams<ProfileStackParamList>;
 };
 
@@ -39,6 +40,11 @@ export type NiteControlStackParamList = {
     currentColor: string;
   };
   QrScan: undefined;
+};
+
+// Protocol Lab Stack Navigator Types
+export type ProtocolLabStackParamList = {
+  ProtocolLabMain: undefined;
 };
 
 // Profile Stack Navigator Types
@@ -73,6 +79,11 @@ export type NiteControlStackScreenProps<T extends keyof NiteControlStackParamLis
   T
 >;
 
+export type ProtocolLabStackScreenProps<T extends keyof ProtocolLabStackParamList> = StackScreenProps<
+  ProtocolLabStackParamList,
+  T
+>;
+
 export type ProfileStackScreenProps<T extends keyof ProfileStackParamList> = StackScreenProps<
   ProfileStackParamList,
   T
@@ -89,6 +100,7 @@ export type NiteControlScreenProps = NiteControlStackScreenProps<'NiteControlMai
 export type MultiCupControlScreenProps = NiteControlStackScreenProps<'MultiCupControl'>;
 export type ColorWheelScreenProps = NiteControlStackScreenProps<'ColorWheel'>;
 export type QrScanScreenProps = NiteControlStackScreenProps<'QrScan'>;
+export type ProtocolLabScreenProps = ProtocolLabStackScreenProps<'ProtocolLabMain'>;
 
 export type ShopScreenProps = ShopStackScreenProps<'ShopMain'>;
 export type ProductDetailScreenProps = ShopStackScreenProps<'ProductDetail'>;

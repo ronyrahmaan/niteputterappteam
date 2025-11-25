@@ -854,6 +854,150 @@ export const NiteControlScreen: React.FC<NiteControlScreenProps> = ({ navigation
                 <Text style={styles.debugActionText}>Status</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Pattern Discovery Section */}
+            <View style={[styles.debugActions, { marginTop: 8 }]}>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected devices for pattern discovery', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🔍 STARTING PATTERN DISCOVERY 1-50...');
+                  addDebugLog('👀 Watch your LED - each pattern shows for 3 seconds');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.discoverPatterns(deviceId, 1, 50);
+                    addDebugLog('✅ Pattern discovery 1-50 complete!', 'success');
+                  } catch (error) {
+                    addDebugLog(`❌ Pattern discovery failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Patterns 1-50</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected devices for pattern discovery', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🔍 STARTING PATTERN DISCOVERY 51-100...');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.discoverPatterns(deviceId, 51, 100);
+                    addDebugLog('✅ Pattern discovery 51-100 complete!', 'success');
+                  } catch (error) {
+                    addDebugLog(`❌ Pattern discovery failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Patterns 51-100</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.debugActions, { marginTop: 4 }]}>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected devices for command testing', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🧪 TESTING ALTERNATIVE COMMAND CODES...');
+                  addDebugLog('📋 Testing RED color with different commands');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.testAlternativeCommands(deviceId, [255, 0, 0]); // RED
+                    addDebugLog('✅ Alternative commands test complete!', 'success');
+                  } catch (error) {
+                    addDebugLog(`❌ Command test failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Alt Commands</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected devices for 8-byte test', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🧪 TESTING 8-BYTE PROTOCOL...');
+                  addDebugLog('📋 Using your LightBlue data format');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.test8ByteProtocol(deviceId, 255, 0, 0); // RED
+                    addDebugLog('✅ 8-byte protocol test complete!', 'success');
+                  } catch (error) {
+                    addDebugLog(`❌ 8-byte test failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>8-Byte Test</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Focused Pattern Testing - Since Pattern 20 showed something */}
+            <View style={[styles.debugActions, { marginTop: 8 }]}>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected device for focused testing', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🎯 FOCUSED TEST: Patterns 15-25 (around Pattern 20)');
+                  addDebugLog('🔍 Looking for more solid colors...');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.discoverPatterns(deviceId, 15, 25);
+                    addDebugLog('✅ Focused pattern test 15-25 complete!', 'success');
+                  } catch (error) {
+                    addDebugLog(`❌ Focused test failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Patterns 15-25</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (connectedCups.length === 0) {
+                    addDebugLog('❌ No connected device for pattern 20 test', 'error');
+                    return;
+                  }
+
+                  addDebugLog('🎯 TESTING PATTERN 20 SPECIFICALLY');
+                  addDebugLog('👀 Pattern 20 showed something - testing 10 seconds');
+
+                  try {
+                    const deviceId = connectedCups[0].id;
+                    await bleService.discoverPatterns(deviceId, 20, 20);
+                    addDebugLog('✅ Pattern 20 specific test complete!', 'success');
+                    addDebugLog('💡 What color/effect did you see on Pattern 20?');
+                  } catch (error) {
+                    addDebugLog(`❌ Pattern 20 test failed: ${error.message}`, 'error');
+                  }
+                }}
+                style={styles.debugTestButton}
+              >
+                <Text style={styles.debugActionText}>Test Pattern 20</Text>
+              </TouchableOpacity>
+            </View>
+
           </View>
         )}
 
@@ -1417,14 +1561,19 @@ const styles = StyleSheet.create({
   // Debug Panel Styles
   debugPanel: {
     position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
-    height: 300,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    bottom: 80,
+    left: 8,
+    right: 8,
+    height: 550,
+    backgroundColor: 'rgba(0, 0, 0, 0.98)',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 20,
   },
   debugHeader: {
     flexDirection: 'row',
@@ -1450,14 +1599,15 @@ const styles = StyleSheet.create({
   },
   debugLog: {
     flex: 1,
-    padding: 8,
+    padding: 12,
   },
   debugLogText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginBottom: 4,
-    lineHeight: 14,
+    marginBottom: 6,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   debugEmptyText: {
     color: 'rgba(255, 255, 255, 0.5)',

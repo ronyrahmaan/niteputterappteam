@@ -13,6 +13,7 @@ import { NiteControlScreen } from '../features/niteControl/NiteControlScreen';
 import { MultiCupControlScreen } from '../features/niteControl/MultiCupControlScreen';
 import { ColorWheelScreen } from '../features/niteControl/ColorWheelScreen';
 import QrScanScreen from '../features/niteControl/QrScanScreen';
+import { ComprehensiveProtocolLabScreen } from '../features/protocolLab/ComprehensiveProtocolLabScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { ReferralsScreen } from '../features/profile/ReferralsScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
@@ -21,11 +22,12 @@ import { PaymentMethodsScreen } from '../features/settings/PaymentMethodsScreen'
 import { AboutScreen } from '../features/about/AboutScreen';
 import { HelpSupportScreen } from '../features/support/HelpSupportScreen';
 import { theme } from '../lib/theme';
-import { TabParamList, ShopStackParamList, NiteControlStackParamList, ProfileStackParamList } from '../types/navigation';
+import { TabParamList, ShopStackParamList, NiteControlStackParamList, ProtocolLabStackParamList, ProfileStackParamList } from '../types/navigation';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const ShopStack = createStackNavigator<ShopStackParamList>();
 const NiteControlStack = createStackNavigator<NiteControlStackParamList>();
+const ProtocolLabStack = createStackNavigator<ProtocolLabStackParamList>();
 const ProfileStackNavigator = createStackNavigator<ProfileStackParamList>();
 
 interface TabIconProps {
@@ -115,12 +117,31 @@ const NiteControlStackComponent = () => {
         component={ColorWheelScreen} 
         options={{ headerShown: false }}
       />
-      <NiteControlStack.Screen 
-        name="QrScan" 
-        component={QrScanScreen} 
+      <NiteControlStack.Screen
+        name="QrScan"
+        component={QrScanScreen}
         options={{ headerShown: false }}
       />
     </NiteControlStack.Navigator>
+  );
+};
+
+// Protocol Lab Stack Navigator
+const ProtocolLabStackComponent = () => {
+  return (
+    <ProtocolLabStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: '#0A0A0A' },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: { fontWeight: 'bold' },
+      }}
+    >
+      <ProtocolLabStack.Screen
+        name="ProtocolLabMain"
+        component={ComprehensiveProtocolLabScreen}
+        options={{ headerShown: false }}
+      />
+    </ProtocolLabStack.Navigator>
   );
 };
 
@@ -214,6 +235,16 @@ export const TabNavigator: React.FC = () => {
           title: 'Control',
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} iconName="game-controller" />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="ProtocolLab"
+        component={ProtocolLabStackComponent}
+        options={{
+          title: 'Lab',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} iconName="flask" />
           ),
         }}
       />
